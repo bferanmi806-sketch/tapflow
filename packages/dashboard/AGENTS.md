@@ -192,10 +192,14 @@ Keys live in `queryKeys` in `lib/queries.ts`, so a mutation invalidates the key 
 a spelling of it. Where a list can fail, `ListStateRow` shows loading, the failure with a retry, or empty.
 It never shows the failure as "none yet".
 
-**Nothing checks for a new fetch in an effect yet.** `set-state-in-effect` does not flag `setState`
-inside `.then()`. A text scan was tried while the pages moved, and it matched fetches in event handlers
-that happen to sit inside an effect: 3 of 14 hits were handlers. A check that holds would need the
-syntax tree, not a pattern.
+**A new fetch in an effect fails lint.** `set-state-in-effect` cannot catch one, because it does not
+flag `setState` inside `.then()`. So `eslint.config.mjs` flags the call itself: `fetch` or `api.*`
+inside `useEffect`/`useLayoutEffect`. `scripts/__tests__/dashboardNoFetchInEffect.test.mjs` plants
+both and checks the rule still fires. Two limits, both written beside the rule:
+
+- **It does not see function boundaries.** A `fetch` in an event handler that an effect registers is
+  flagged too. Today there are none. If one appears, suppress that line with the reason.
+- **It sees direct calls only.** A helper such as `getBuild()` called from an effect passes.
 
 ## Testing
 
