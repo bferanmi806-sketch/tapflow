@@ -35,6 +35,7 @@
 | `tls` | LAN HTTPS(보안 컨텍스트) 설정. WebCodecs 하드웨어 디코드에 필요합니다. 아래 HTTPS 섹션을 참고하세요. |
 | `smtp` | 초대·비밀번호 재설정 이메일 발송을 위한 SMTP 설정 |
 | `webhooks` | 빌드 리뷰 상태가 바뀔 때 알림을 보낼 아웃바운드 엔드포인트. 서명 secret은 `secretEnv`가 가리키는 환경 변수에서 읽습니다. 아래 웹훅 섹션을 참고하세요. |
+| `agent.lean` | Lean mode 설정. 이 머신의 에이전트가 부팅하는 iOS 시뮬레이터에 적용됩니다. 릴레이가 아니라 에이전트가 읽는 값입니다. 기본값은 `false`입니다. 아래 Lean mode 섹션을 참고하세요. |
 
 `smtp.from`은 `smtp.user`가 설정되어 있으면 `tapflow <smtp.user>` 형태로 자동 설정됩니다. 발신자 주소를 다르게 지정하려면 명시적으로 입력합니다.
 
@@ -53,6 +54,7 @@
 | `TAPFLOW_DATA_DIR` | `local.dataDir` | `<설치>/data` | DB·업로드 디렉토리. 환경변수는 현재 디렉토리 기준, `local.dataDir`은 설정 파일 기준으로 상대 경로를 풉니다. 이미 `.tapflow/data`나 `.tapflow-data`가 있는 설치는 그대로 씁니다. |
 | `TAPFLOW_RELAY_URL` | `relay.url` | *(비어있음)* | CLI 명령어의 기본 relay URL |
 | `TAPFLOW_AGENT_TOKEN` | — | *(비어있음)* | 원격 릴레이 인증용 `agent` 스코프 토큰. `--token` 플래그가 우선합니다. [에이전트 설정](/ko/guide/agent#원격-릴레이-인증)을 참고하세요. |
+| `TAPFLOW_LEAN` | `agent.lean` | `off` | `on` 또는 `off`. 다른 값은 경고와 함께 무시하고 설정 파일의 값을 씁니다. |
 | `TAPFLOW_TRUSTED_PROXIES` | — | *(비어있음)* | 신뢰하는 리버스 프록시 IP 목록(콤마 구분, 예: `127.0.0.1,::1`). 릴레이를 같은 호스트의 리버스 프록시 뒤에서 실행할 때 이 값을 설정하면, 프록시 주소 대신 `X-Forwarded-For`에 담긴 실제 클라이언트 IP를 사용합니다. 비어 있으면 전달 헤더를 파싱하지 않습니다. |
 | `TAPFLOW_BUILD_TTL_DAYS` | — | `7` | 삭제를 예약한 빌드의 파일·레코드를 실제로 지우기까지 보관하는 기간(일). 예약은 수동 동작이라 **Done** 표시만으로는 삭제되지 않는다. 로컬 테스트 시 `0.001` 등 작은 값으로 즉시 확인 가능. |
 | `TAPFLOW_WS_BACKPRESSURE_BYTES` | — | `1048576` (1 MB) | 브라우저 소켓당 바이너리 프레임 드롭 임계값. 버퍼가 이 값을 초과하면 프레임이 드롭됩니다. |
@@ -157,6 +159,29 @@ chmod 600 .tapflow/data/.env
 | `TAPFLOW_IOS_MAX_SIZE` / `TAPFLOW_ANDROID_MAX_SIZE` | *(원본)* | `TAPFLOW_MAX_SIZE`의 플랫폼별 오버라이드. |
 | `TAPFLOW_ANDROID_FPS` | `30` | Android 에뮬레이터 캡처 프레임율(gRPC 경로). |
 | `TAPFLOW_ANDROID_BACKEND` | *(자동)* | Android 백엔드 강제 — `grpc` 또는 `scrcpy`. 미설정 시 디바이스 종류로 자동 선택. |
+
+## Lean mode (에이전트)
+
+`agent.lean`을 `true`로 두면, 에이전트는 부팅하는 모든 iOS 시뮬레이터에서 테스트 대상 앱이 쓰지 않는 백그라운드 서비스를 끕니다. iOS 27에서 재 보면 시뮬레이터 한 대의 메모리가 4분의 1 정도, 약 0.5GB 줄어듭니다. 그만큼 Mac 한 대가 스왑 없이 띄울 수 있는 시뮬레이터가 늘어납니다.
+
+```json
+{ "agent": { "lean": true } }
+```
+
+**꺼지는 것:** Siri와 Apple Intelligence의 백그라운드 작업, iCloud 키체인과 백업, 건강 앱·피트니스·HomeKit, 사진 분석, 가족 공유와 스크린 타임, 뉴스·지도 동기화·팁, iMessage와 FaceTime, AirDrop·Continuity·CarPlay·Watch·나의 찾기, Safari 북마크 동기화, 텔레메트리.
+
+**켜 두는 것:** 테스트 대상 앱이 쓰거나 테스터가 화면에서 보는 것은 모두 켜 둡니다. 배경화면과 위젯, 받아쓰기·음성·키보드 추천, Apple로 로그인, CloudKit과 iCloud Drive, StoreKit·푸시·지갑, HealthKit, 사진 선택기, 연락처와 캘린더, Spotlight와 설정 검색, 유니버설 링크, WeatherKit, MapKit, Game Center, CallKit이 여기에 해당합니다. 스트리밍, 입력, UI 트리, 클립보드, 오디오, 설치, 딥링크, 네트워크 제어 같은 tapflow 자체 기능은 lean 시뮬레이터에서 확인했습니다.
+
+tapflow가 시뮬레이터를 실행하는 동안에만 적용됩니다.
+
+- 에이전트는 꺼져 있는 시뮬레이터를 부팅하기 직전에 설정을 쓰고 시뮬레이터를 종료할 때 되돌립니다. 그 뒤에 Xcode나 Simulator.app에서 같은 시뮬레이터를 부팅하면 모든 서비스가 켜진 원래 상태로 뜹니다.
+- 세션이 요청했을 때 이미 실행 중인 시뮬레이터는 그대로 씁니다. 다음에 tapflow로 부팅할 때부터 적용됩니다.
+- 에이전트가 시뮬레이터를 종료하지 못하고 멈췄다면 그 시뮬레이터는 켜져 있는 동안 누가 열든 lean 상태입니다. 시뮬레이터가 꺼진 뒤 다음에 접속하는 에이전트가 설정을 되돌립니다.
+- `tapflow boot`는 에이전트를 거치지 않고 시뮬레이터를 켜므로 원래 상태로 부팅합니다.
+
+iOS 18.5 이상 런타임에서만 동작하고 그 밖의 런타임과 tvOS·watchOS 시뮬레이터는 건드리지 않습니다. Android 에뮬레이터에는 적용되지 않습니다. 시험해 본 실행 인자로는 재 봐도 차이가 거의 없었습니다. `tapflow doctor ios`는 Lean mode가 켜져 있는지와 지금 lean 상태인 시뮬레이터가 몇 대인지 보여 줍니다.
+
+Mac 여러 대로 구성했다면, 각 Mac의 `tapflow.config.json`이 그 Mac의 에이전트에 적용됩니다.
 
 ## HTTPS (보안 컨텍스트)
 

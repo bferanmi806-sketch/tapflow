@@ -226,4 +226,54 @@ describe('relay config validation', () => {
     await expect(import('../lib/config.js')).rejects.toThrow('process.exit')
     expect(exitSpy).toHaveBeenCalledWith(1)
   })
+
+  describe('agent.lean', () => {
+    const withFile = async (body: unknown) => {
+      const fs = await import('fs')
+      vi.mocked(fs.default.existsSync).mockReturnValue(true)
+      vi.mocked(fs.default.readFileSync).mockReturnValue(JSON.stringify(body))
+    }
+
+    it('is off when the file says nothing about it', async () => {
+      await withFile({})
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const { config } = await import('../lib/config.js')
+      expect(config.agent.lean).toBe(false)
+    })
+
+    it('is read from the file', async () => {
+      await withFile({ agent: { lean: true } })
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const { config } = await import('../lib/config.js')
+      expect(config.agent.lean).toBe(true)
+    })
+
+    it('TAPFLOW_LEAN overrides the file in both directions', async () => {
+      await withFile({ agent: { lean: true } })
+      vi.stubEnv('TAPFLOW_LEAN', 'off')
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      expect((await import('../lib/config.js')).config.agent.lean).toBe(false)
+
+      vi.resetModules()
+      await withFile({ agent: { lean: false } })
+      vi.stubEnv('TAPFLOW_LEAN', 'on')
+      expect((await import('../lib/config.js')).config.agent.lean).toBe(true)
+    })
+
+    it('an unrecognised TAPFLOW_LEAN is warned about and the file wins', async () => {
+      await withFile({ agent: { lean: true } })
+      vi.stubEnv('TAPFLOW_LEAN', 'yes')
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const { config } = await import('../lib/config.js')
+      expect(config.agent.lean).toBe(true)
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('TAPFLOW_LEAN'))
+    })
+
+    it('a value that is not a boolean stops the load, naming the key', async () => {
+      await withFile({ agent: { lean: 'yes' } })
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      await expect(import('../lib/config.js')).rejects.toThrow('process.exit')
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('agent.lean'))
+    })
+  })
 })

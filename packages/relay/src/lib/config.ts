@@ -85,6 +85,11 @@ const configSchema = z.object({
       enabled: z.boolean(),
     })
   ),
+  // Read by this machine's agents, not by the relay: in a multi-Mac install each Mac's file decides
+  // for its own agents (#851).
+  agent: z.object({
+    lean: z.boolean(),
+  }),
 })
 
 export type TapflowConfig = z.infer<typeof configSchema>
@@ -113,6 +118,9 @@ const DEFAULTS = {
     from: 'tapflow <noreply@tapflow.local>',
   },
   webhooks: [],
+  agent: {
+    lean: false,
+  },
 } satisfies TapflowConfig
 
 // TAPFLOW_DATA_DIR is a shell value, so a relative one means what it does in a shell: from the cwd.
@@ -289,6 +297,9 @@ function load(): TapflowConfig {
       from: file.smtp?.from ?? DEFAULTS.smtp.from,
     },
     webhooks: resolveWebhooksConfig((file as { webhooks?: unknown }).webhooks, process.env),
+    agent: {
+      lean: file.agent?.lean ?? DEFAULTS.agent.lean,
+    },
   }
 
   if (process.env.TAPFLOW_PORT) cfg.local.port = Number(process.env.TAPFLOW_PORT)
@@ -302,6 +313,9 @@ function load(): TapflowConfig {
   if (process.env.SMTP_USER) cfg.smtp.user = process.env.SMTP_USER
   if (process.env.SMTP_PASS) cfg.smtp.pass = process.env.SMTP_PASS
   if (process.env.SMTP_FROM) cfg.smtp.from = process.env.SMTP_FROM
+  const lean = process.env.TAPFLOW_LEAN
+  if (lean === 'on' || lean === 'off') cfg.agent.lean = lean === 'on'
+  else if (lean) logger.warn(`TAPFLOW_LEAN=${lean} is not on or off — using agent.lean from the config file`)
 
   // auto-derive from address when user is set but from was never explicitly configured
   if (cfg.smtp.user && file.smtp?.from === undefined && process.env.SMTP_FROM === undefined) {

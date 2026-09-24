@@ -107,7 +107,7 @@ export async function cmdAgentStart(opts: AgentStartOptions): Promise<void> {
     const spinner = createSpinner(`Connecting ${platform} agent…`)
     spinner.start()
     try {
-      const agent = await AgentRegistry.connect(platform, relayUrl, { deviceFilter: opts.device, token })
+      const agent = await AgentRegistry.connect(platform, relayUrl, { deviceFilter: opts.device, token, lean: config.agent.lean })
       spinner.stop(true)
       agents.push(agent)
     } catch (e) {

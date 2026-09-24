@@ -3,6 +3,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 vi.mock('node:child_process')
 vi.mock('node:fs')
 vi.mock('node:net')
+const lean = vi.hoisted(() => ({ applied: [] as string[] }))
+vi.mock('@tapflowio/ios-agent', () => ({
+  LeanStore: vi.fn(function () { return { applied: () => lean.applied } }),
+}))
 
 import { execSync, spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
@@ -528,5 +532,53 @@ describe('Network hook symbols (#629)', () => {
       .map((c) => String(c[0]))
       .filter((cmd) => cmd.startsWith('xcrun') || cmd.startsWith('xcodebuild'))
     expect(devTools, 'the no-Xcode path invoked developer tools').toEqual([])
+  })
+})
+
+describe('Lean mode', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    mockPortAvailable(true)
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
+    mockExistsSync.mockImplementation((p) => p === '/Applications/Xcode.app')
+    mockExecSync.mockImplementation((cmd) => {
+      const c = cmd as string
+      if (c === 'xcodebuild -version') return 'Xcode 26.0\n'
+      if (c.startsWith('xcrun simctl')) return simctlBooted
+      if (c === 'which adb') throw new Error('not found')
+      return ''
+    })
+    lean.applied = []
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  const leanCheck = async (on: boolean) =>
+    (await runDoctorChecks('ios', { lean: on })).ios?.find((c) => c.label.startsWith('Lean mode'))
+
+  it('says it is on, and how many devices are lean right now', async () => {
+    lean.applied = ['AAA']
+    expect(await leanCheck(true)).toMatchObject({ label: 'Lean mode: on (1 device lean now)', ok: true })
+  })
+
+  it('does not count a device that no longer exists', async () => {
+    // The host directory outlives `simctl delete`, so its marker does too.
+    lean.applied = ['AAA', 'GONE']
+    expect((await leanCheck(true))?.label).toBe('Lean mode: on (1 device lean now)')
+  })
+
+  it('says it is off', async () => {
+    expect(await leanCheck(false)).toMatchObject({ label: 'Lean mode: off', ok: true })
+  })
+
+  it('asks simctl for the device list once, not once per check', async () => {
+    await leanCheck(true)
+    expect(mockExecSync.mock.calls.filter(([c]) => String(c).startsWith('xcrun simctl list devices'))).toHaveLength(1)
+  })
+
+  it('says when it is off but a device is still lean, and when that clears', async () => {
+    lean.applied = ['BBB']
+    const check = await leanCheck(false)
+    expect(check?.label).toBe('Lean mode: off (1 device still lean)')
+    expect(check?.detail).toMatch(/puts each one back when it connects and finds it shut down/)
   })
 })

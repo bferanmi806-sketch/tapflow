@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest'
 
+vi.mock('@tapflowio/relay', () => ({ config: { agent: { lean: true } } }))
 vi.mock('../../lib/doctor.js', () => ({
   runDoctorChecks: vi.fn(),
 }))
@@ -44,7 +45,8 @@ describe('cmdDoctor', () => {
     })
 
     await cmdDoctor({ platform: 'android' })
-    expect(mockRunDoctorChecks).toHaveBeenCalledWith('android')
+    // `agent.lean` comes from this machine's config, which is what the agents it starts will read.
+    expect(mockRunDoctorChecks).toHaveBeenCalledWith('android', { lean: true })
   })
 
   it('알 수 없는 platform이면 warn + exit(1), 진단 미실행', async () => {

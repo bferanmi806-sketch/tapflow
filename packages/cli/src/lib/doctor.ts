@@ -3,6 +3,7 @@ import { accessSync, constants, existsSync, readdirSync, readFileSync } from 'no
 import { createServer } from 'node:net'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { LeanStore } from '@tapflowio/ios-agent'
 import {
   isFilterEnforcing, isNetFilterCurrent, isNewer, readNetFilterState, removalSteps, shippedHookPath,
 } from './net-filter.js'
@@ -30,19 +31,19 @@ export interface DoctorResult {
 }
 
 // platform: 'ios' | 'android' 지정 시 해당 플랫폼만. 없으면 자동(iOS는 macOS에서만, Android은 항상).
-export async function runDoctorChecks(platform?: string): Promise<DoctorResult> {
+export async function runDoctorChecks(platform?: string, opts: { lean?: boolean } = {}): Promise<DoctorResult> {
   const isMac = process.platform === 'darwin'
   const wantIos = platform === 'ios' || (!platform && isMac)
   const wantAndroid = platform === 'android' || !platform
 
   return {
     common: [checkNodeVersion(), await checkPort(4000)],
-    ios: wantIos ? buildIosChecks(isMac) : null,
+    ios: wantIos ? buildIosChecks(isMac, opts.lean ?? false) : null,
     android: wantAndroid ? buildAndroidChecks(resolveAdb()) : null,
   }
 }
 
-function buildIosChecks(isMac: boolean): DoctorCheck[] {
+function buildIosChecks(isMac: boolean, lean: boolean): DoctorCheck[] {
   if (!isMac) {
     return [{ label: 'iOS', ok: false, warn: true, detail: 'iOS testing requires macOS.' }]
   }
@@ -69,7 +70,9 @@ function buildIosChecks(isMac: boolean): DoctorCheck[] {
       // answer here could only ever have been "cannot tell".
     ]
   }
-  return [checkXcode(), checkSimctl(), checkBootedSimulator(), ...buildNetFilterChecks(), checkNetworkHook(), checkHookSymbols()]
+  // Read once and shared: both checks below need the list, and each read is an `xcrun` round trip.
+  const simulators = listSimulators()
+  return [checkXcode(), checkSimctl(), checkBootedSimulator(simulators), ...buildNetFilterChecks(), checkNetworkHook(), checkHookSymbols(), checkLeanMode(lean, simulators)]
 }
 
 /**
@@ -457,21 +460,58 @@ function checkSimctl(): DoctorCheck {
 }
 
 // 부팅은 QA Session 접속 시 relay가 on-demand로 한다 — 미부팅은 정상, 디바이스 존재만 확인.
-function checkBootedSimulator(): DoctorCheck {
+type Simulator = { name: string; state: string; udid: string }
+
+/** Every simulator simctl knows, or null when it could not be asked. */
+function listSimulators(): Simulator[] | null {
   try {
     const raw = execSync('xcrun simctl list devices --json', { encoding: 'utf8', stdio: 'pipe', timeout: PROBE_TIMEOUT_MS })
-    const data = JSON.parse(raw) as { devices: Record<string, Array<{ name: string; state: string; udid: string }>> }
-    const allDevices = Object.values(data.devices).flat()
-    if (allDevices.length === 0) {
-      return { label: 'Simulator', ok: false, warn: true, detail: 'No simulator available. Run: tapflow setup ios' }
-    }
-    const booted = allDevices.find((d) => d.state === 'Booted')
-    return {
-      label: booted ? `Simulator: ${booted.name} (booted)` : `Simulator available (${allDevices.length})`,
-      ok: true,
-    }
+    const data = JSON.parse(raw) as { devices: Record<string, Simulator[]> }
+    return Object.values(data.devices).flat()
   } catch {
+    return null
+  }
+}
+
+function checkBootedSimulator(allDevices: Simulator[] | null): DoctorCheck {
+  if (!allDevices) {
     return { label: 'Simulator', ok: false, detail: 'Could not query simulators. Is Xcode installed?' }
+  }
+  if (allDevices.length === 0) {
+    return { label: 'Simulator', ok: false, warn: true, detail: 'No simulator available. Run: tapflow setup ios' }
+  }
+  const booted = allDevices.find((d) => d.state === 'Booted')
+  return {
+    label: booted ? `Simulator: ${booted.name} (booted)` : `Simulator available (${allDevices.length})`,
+    ok: true,
+  }
+}
+
+/**
+ * Reports, never fixes: `agent.lean` is the switch. A device counts as lean while its marker is there,
+ * which is from the agent booting it until the agent shuts it down — and past that when a run ended
+ * without the shutdown, until the next connect puts it back.
+ */
+function checkLeanMode(lean: boolean, simulators: Simulator[] | null): DoctorCheck {
+  let count = 0
+  try {
+    // The host directory outlives `simctl delete`, so a marker for a device that is gone is not counted.
+    // With no list at all this counts nothing: that failure is the Simulator check's to report.
+    const exists = new Set((simulators ?? []).map((d) => d.udid))
+    count = new LeanStore().applied().filter((udid) => exists.has(udid)).length
+  } catch {
+    // An unreadable store directory still leaves this check able to say what the setting is.
+  }
+  const devices = `${count} device${count === 1 ? '' : 's'}`
+  if (lean) return { label: count > 0 ? `Lean mode: on (${devices} lean now)` : 'Lean mode: on', ok: true }
+  if (count === 0) return { label: 'Lean mode: off', ok: true }
+  return {
+    label: `Lean mode: off (${devices} still lean)`,
+    ok: false,
+    warn: true,
+    // Only shut-down devices are put back on connect, and one whose marker or store cannot be read is
+    // left as it is — so this says what happens next without promising it has.
+    detail: 'Left by a run that ended without shutting them down. An agent puts each one back when it connects and finds it shut down; its log says so if one cannot be.',
   }
 }
 

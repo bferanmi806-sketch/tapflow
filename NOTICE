@@ -4,6 +4,11 @@ This product includes logic derived from baguette
 (https://github.com/tddworks/baguette),
 licensed under the Apache License, Version 2.0.
 
+This product includes a list of launchd labels selected from simslim
+(https://github.com/MobAI-App/simslim),
+licensed under the MIT License. Copyright (c) 2026 Interlap.
+The full notice is in packages/ios-agent/src/leanLabels.ts.
+
 This product bundles scrcpy-server
 (https://github.com/Genymobile/scrcpy),
 licensed under the Apache License, Version 2.0.
