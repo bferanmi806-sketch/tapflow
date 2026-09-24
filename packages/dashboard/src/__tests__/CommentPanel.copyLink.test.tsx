@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { CommentPanel } from '@/components/CommentPanel'
 import { resetTeammateBasesForTests } from '@/lib/publicLink'
 import type { Comment } from '@/lib/types'
+import { withQuery } from './withQuery'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
@@ -57,7 +58,7 @@ describe('CommentPanel — copying a link to a comment', () => {
 
   it('copies the teammate base with this page path and the comment anchor', async () => {
     stubFetch(configured)
-    render(<CommentPanel buildId={3} />)
+    render(withQuery(<CommentPanel buildId={3} />))
 
     await userEvent.click(await screen.findByRole('button', { name: /copy link to comment/i }))
 
@@ -69,7 +70,7 @@ describe('CommentPanel — copying a link to a comment', () => {
     const fetchMock = stubFetch(configured)
     expect(relayHostCalls(fetchMock)).toBe(0)
 
-    render(<CommentPanel buildId={3} />)
+    render(withQuery(<CommentPanel buildId={3} />))
     await screen.findByText('Button overlaps the header')
 
     expect(relayHostCalls(fetchMock)).toBe(1)
@@ -79,7 +80,7 @@ describe('CommentPanel — copying a link to a comment', () => {
     let release!: () => void
     const hold = new Promise<void>((resolve) => { release = resolve })
     stubFetch(configured, hold)
-    render(<CommentPanel buildId={3} />)
+    render(withQuery(<CommentPanel buildId={3} />))
 
     await userEvent.click(await screen.findByRole('button', { name: /copy link to comment/i }))
     expect(writeText).not.toHaveBeenCalled()
@@ -92,7 +93,7 @@ describe('CommentPanel — copying a link to a comment', () => {
   it('reports a page with no clipboard API (plain HTTP) as a failed copy', async () => {
     vi.stubGlobal('navigator', { ...navigator, clipboard: undefined })
     stubFetch(configured)
-    render(<CommentPanel buildId={3} />)
+    render(withQuery(<CommentPanel buildId={3} />))
 
     await userEvent.click(await screen.findByRole('button', { name: /copy link to comment/i }))
 
@@ -102,7 +103,7 @@ describe('CommentPanel — copying a link to a comment', () => {
   it('reports a write the browser refused, and does not claim it', async () => {
     writeText.mockRejectedValue(new Error('denied'))
     stubFetch(configured)
-    render(<CommentPanel buildId={3} />)
+    render(withQuery(<CommentPanel buildId={3} />))
 
     await userEvent.click(await screen.findByRole('button', { name: /copy link to comment/i }))
 
