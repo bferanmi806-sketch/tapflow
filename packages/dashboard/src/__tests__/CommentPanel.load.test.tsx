@@ -49,6 +49,13 @@ describe('CommentPanel — what it loads', () => {
 })
 
 describe('CommentPanel — after the move to Query', () => {
+  it('says it is loading, not that there are none, while the list is on its way', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
+    render(withQuery(<CommentPanel buildId={3} />))
+    expect(screen.getByText('Loading comments…')).toBeInTheDocument()
+    expect(screen.queryByText('No comments yet.')).toBeNull()
+  })
+
   it('says the comments could not be loaded, rather than that there are none', async () => {
     failList = true
     render(withQuery(<CommentPanel buildId={3} />))

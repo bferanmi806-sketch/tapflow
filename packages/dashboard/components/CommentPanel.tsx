@@ -122,7 +122,11 @@ export function CommentPanel({ buildId }: Props) {
     <div className="flex h-full flex-col gap-3 px-1">
       <ScrollArea className="flex-1 rounded-md border">
         <div className="p-3">
-          {commentsQuery.isError && !commentsQuery.data ? (
+          {/* The same states and order as `listView`: rows held through a failed refresh — an empty
+              answer included — are still the answer, so only a failure with nothing to show says so. */}
+          {commentsQuery.isPending ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Loading comments…</p>
+          ) : commentsQuery.isError && !commentsQuery.data ? (
             <p className="text-sm text-muted-foreground text-center py-8">Couldn&apos;t load comments.</p>
           ) : comments.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No comments yet.</p>
