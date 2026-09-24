@@ -4,17 +4,18 @@ import { useSearchParams } from 'react-router-dom'
 export function usePerfMode() {
   const [searchParams] = useSearchParams()
   const perfMode = searchParams.get('perf') === '1'
-  const [visible, setVisible] = useState(perfMode)
+  // Only the shortcut's toggle is state; being in perf mode at all comes from the URL.
+  const [hidden, setHidden] = useState(false)
 
   useEffect(() => {
-    if (!perfMode) { setVisible(false); return }
-    setVisible(true)
+    if (!perfMode) return
     const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'P') setVisible(v => !v)
+      if (e.ctrlKey && e.shiftKey && e.key === 'P') setHidden(h => !h)
     }
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    // Leaving perf mode forgets the toggle, so coming back shows the overlay again.
+    return () => { window.removeEventListener('keydown', handler); setHidden(false) }
   }, [perfMode])
 
-  return { perfMode, visible }
+  return { perfMode, visible: perfMode && !hidden }
 }

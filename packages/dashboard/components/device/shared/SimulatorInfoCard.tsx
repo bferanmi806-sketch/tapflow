@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ScanLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -60,16 +60,16 @@ export function SimulatorInfoCard(props: SimulatorInfoCardProps) {
   // Decode path is a stable per-browser capability; compute once, not per device card.
   const mode = useMemo(() => performanceMode(), []);
   const modeLabel = MODE_LABEL[mode];
-  const [noticeOpen, setNoticeOpen] = useState(false);
-  useEffect(() => {
+  // Read once, as the initial state: the notice either opens with the card or not at all.
+  const [noticeOpen, setNoticeOpen] = useState(() => {
     let dismissed = false;
     try {
       dismissed = localStorage.getItem(PERF_NOTICE_KEY) === '1';
     } catch {
       /* no storage */
     }
-    if (shouldAutoShowPerfNotice(mode, dismissed)) setNoticeOpen(true);
-  }, [mode]);
+    return shouldAutoShowPerfNotice(mode, dismissed);
+  });
   const handleNoticeOpenChange = (next: boolean) => {
     setNoticeOpen(next);
     if (!next) {

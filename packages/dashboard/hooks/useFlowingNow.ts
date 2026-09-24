@@ -9,6 +9,10 @@ export function useFlowingNow(intervalMs: number, active: boolean): number {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (!active) return
+    // Synchronising with the clock, which is what an effect is for: on resume the reading is caught up in
+    // the same commit. Deferring it to a 0 ms timer would quiet the rule and draw one frame of the old
+    // window — the thing #751 fixed.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a timer sync; see above
     setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), intervalMs)
     return () => clearInterval(id)

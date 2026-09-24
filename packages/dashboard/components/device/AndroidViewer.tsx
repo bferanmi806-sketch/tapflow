@@ -100,7 +100,14 @@ export function AndroidViewer({
   /** Which of the frame and the agent's description changed most recently. The aspect gate reads
    *  it to tell the flash — which ends on its own — from a description with no frame behind it,
    *  which does not. See `showsPicture`. */
-  const [frameIsAhead, setFrameIsAhead] = useState(false);
+  //
+  //  Held as *which description* the frame was ahead of: once the description moves on, the frame is
+  //  no longer the newer of the two, and that follows during render rather than from an effect clearing
+  //  a boolean a commit late. `useDecoderStream` calls the latest `onResize`, so the key it reads is
+  //  this render's.
+  const descriptionKey = `${streamRotation}:${screenWidth ?? ''}:${screenHeight ?? ''}`;
+  const [frameAheadOf, setFrameAheadOf] = useState<string | null>(null);
+  const frameIsAhead = frameAheadOf === descriptionKey;
   // Rotation intent is owned locally (iOS IOSViewer pattern). It only drives CSS shell
   // rotation for portrait-locked apps; rotation-capable apps follow the actual stream.
   const [userWantsLandscape, setUserWantsLandscape] = useState(false);
@@ -137,7 +144,7 @@ export function AndroidViewer({
       if (!prev || prev.width !== size.width || prev.height !== size.height) {
         videoSizeRef.current = size
         setVideoSize(size)
-        setFrameIsAhead(true)
+        setFrameAheadOf(descriptionKey)
       }
     },
     onDecoderReady: (decoder) => {
@@ -351,9 +358,6 @@ export function AndroidViewer({
     if (!rotateAnswered.current) { rotateAnswered.current = true; return }
     setRotatePending(false)
   }, [streamRotation, screenWidth, screenHeight])
-  // The description has caught up, so the frame is no longer the newer of the two — and if it
-  // never arrives, the gate above shows the last one rather than waiting on it.
-  useEffect(() => { setFrameIsAhead(false) }, [streamRotation, screenWidth, screenHeight])
 
   const handleRotate = useCallback(() => {
     setRotatePending(true)

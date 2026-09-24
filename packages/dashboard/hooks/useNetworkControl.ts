@@ -118,7 +118,14 @@ export function useNetworkControl({ sessionId, send, supported, deviceReady, han
   // A new session knows nothing about its device, and the previous session's answer is about somebody
   // else's. `DeviceViewer` drops frames addressed elsewhere, but it stays mounted across the switch,
   // so without this the old position would sit on screen until a new report replaced it.
+  //
+  // **Left as an effect on purpose** (#845). This resets five pieces of state *and* three refs
+  // together, in an order the readiness effect below depends on (`everReady` reads `readyRef`, whose
+  // own effect runs first in the same flush). Refs cannot be written during render, so moving the state
+  // half there would split one reset across two phases. It synchronises with the relay's session, an
+  // external system, which is the case this package allows the rule to be suppressed for.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a reset in step with refs; see above
     setPosition('waiting')
     setSteerable(true)
     setReason(undefined)
@@ -160,11 +167,14 @@ export function useNetworkControl({ sessionId, send, supported, deviceReady, han
    * the moment this stops knowing, and waiting until it returns would leave the false answer on
    * screen for the whole boot.
    */
+  // Suppressed for the same reason as the session reset above: the device's readiness is the relay's,
+  // and this keeps state and `everReady` in one step.
   useEffect(() => {
     if (deviceReady) {
       everReady.current = true
       // Readiness returning is what makes a read genuinely expected — the relay asks on join and the
       // agent reports on ready — so this is where `waiting` belongs, and where the deadline arms.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- readiness is the relay's; see above
       setPosition('waiting')
       return
     }
