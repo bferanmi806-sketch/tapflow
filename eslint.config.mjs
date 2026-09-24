@@ -85,21 +85,24 @@ export default tseslint.config(
       // `.then()`, which is how an effect fetch writes. So the call itself is flagged.
       //
       // A selector, not a rule of our own, and it knows nothing about function boundaries: a `fetch`
-      // in an event handler *registered* by an effect is flagged too. None exists today (#845 measured
-      // zero hits after the move); one that appears takes a suppression with its reason, and the day
-      // there are several is the day for a rule that walks to the nearest function. Direct `fetch` and
-      // `api.*` only — a helper called from an effect (`getBuild()`) is not seen.
+      // in an event handler *registered* by an effect is flagged too. None exists today; one that
+      // appears takes a suppression with its reason, and the day there are several is the day for a
+      // rule that walks to the nearest function. It sees the call only where it is written: a fetch
+      // wrapped in a `useCallback` that the effect calls passes — CommentPanel's `load()` did, and was
+      // moved to Query when the review of this rule found it. So do `window.fetch` and a renamed `api`.
       'no-restricted-syntax': ['error',
-        ...['useEffect', 'useLayoutEffect'].flatMap((hook) => [
-          {
-            selector: `CallExpression[callee.name='${hook}'] CallExpression[callee.name='fetch']`,
-            message: `Read server data with TanStack Query (useQuery), not fetch inside ${hook}. See packages/dashboard/AGENTS.md.`,
-          },
-          {
-            selector: `CallExpression[callee.name='${hook}'] CallExpression[callee.object.name='api']`,
-            message: `Read server data with TanStack Query (useQuery), not api.* inside ${hook}. See packages/dashboard/AGENTS.md.`,
-          },
-        ]),
+        ...['useEffect', 'useLayoutEffect'].flatMap((hook) =>
+          // `useEffect(...)` and `React.useEffect(...)`, the form the shadcn primitives use.
+          [`[callee.name='${hook}']`, `[callee.property.name='${hook}']`].flatMap((effect) => [
+            {
+              selector: `CallExpression${effect} CallExpression[callee.name='fetch']`,
+              message: `Read server data with TanStack Query (useQuery), not fetch inside ${hook}. See packages/dashboard/AGENTS.md.`,
+            },
+            {
+              selector: `CallExpression${effect} CallExpression[callee.object.name='api']`,
+              message: `Read server data with TanStack Query (useQuery), not api.* inside ${hook}. See packages/dashboard/AGENTS.md.`,
+            },
+          ])),
       ],
     },
   },

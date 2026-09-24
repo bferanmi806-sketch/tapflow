@@ -39,6 +39,15 @@ describe('fetching in an effect fails the dashboard lint', () => {
     expect(await flagged(code)).toEqual([5])
   })
 
+  it('flags the React.useEffect form the shadcn primitives use', async () => {
+    const code = `import * as React from 'react'\nexport function useZ() {
+  const [v, setV] = React.useState<unknown>(null)
+  React.useEffect(() => { fetch('/api/v1/z').then((r) => r.json()).then(setV) }, [])
+  return v
+}\n`
+    expect(await flagged(code)).toEqual([4])
+  })
+
   it('leaves the same calls alone outside an effect', async () => {
     // The twin: identical calls in an event handler, which is where a request on a user action lives.
     const code = header + `export function Button() {
