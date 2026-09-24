@@ -16,8 +16,8 @@ export default defineConfig({
     // render while #828 was being written, which is the evidence that it bites rather than
     // decorates.
     //
-    // **One of the 16 is off**: `react-hooks/set-state-in-effect`, with 15 violations across 13
-    // files (see AGENTS.md). So a clean lint here says every *enabled* diagnostic passes. Neither
+    // All 16 are on. `react-hooks/set-state-in-effect` was the last, off over 15 violations until
+    // #845 cleared them, so a clean lint here now says every diagnostic in the set passes. Neither
     // of the two rules that actually gate compilation is among them.
     //
     // A file the compiler cannot prove safe is skipped, not miscompiled; `--verbose` on a build

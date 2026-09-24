@@ -24,10 +24,16 @@ import {
 } from '@/components/ui/table'
 import { Plus, Trash2 } from 'lucide-react'
 import { loadTeammateBases } from '@/lib/publicLink'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getTokens, queryKeys } from '@/lib/queries'
+import { ListStateRow } from '@/components/ListStateRow'
+import { listView } from '@/lib/list-view'
+import { useFocusAfterSwap } from '@/hooks/useFocusAfterSwap'
+import type { ApiToken } from '@/lib/types'
 
 type TokenType = 'api' | 'agent'
 
-type Token = { id: number; name: string; scope: string; last_used_at: string | null; expires_at: string | null; created_at: string }
+type Token = ApiToken
 
 const schema = z.object({
   name: z.string().min(1, 'Give the token a name'),
@@ -39,7 +45,13 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export function TokenSettings() {
-  const [tokens, setTokens] = useState<Token[]>([])
+  const queryClient = useQueryClient()
+  const tokensQuery = useQuery({ queryKey: queryKeys.tokens, queryFn: getTokens })
+  const tokens = tokensQuery.data ?? []
+  const view = listView(tokensQuery)
+  // A retry that works replaces the failure row, and the button in it, with the list.
+  const createButtonRef = useRef<HTMLButtonElement>(null)
+  const listRegion = useFocusAfterSwap<HTMLTableSectionElement>(view, createButtonRef)
   const [open, setOpen] = useState(false)
   const [newToken, setNewToken] = useState('')
   const [tokenType, setTokenType] = useState<TokenType>('api')
@@ -56,11 +68,7 @@ export function TokenSettings() {
     defaultValues: { name: '', expiresDays: '30' },
   })
 
-  function load() {
-    fetch('/api/v1/tokens', { credentials: 'include' }).then((r) => r.json()).then(setTokens)
-  }
-
-  useEffect(() => { load() }, [])
+  const load = () => { void queryClient.invalidateQueries({ queryKey: queryKeys.tokens }) }
 
   // The form is replaced by the token, which is shown once. Focus goes to it so it can be selected and copied
   // by hand where there is no clipboard API.
@@ -126,7 +134,7 @@ export function TokenSettings() {
         <h1 className="text-xl font-semibold">Personal Access Tokens</h1>
         <Dialog open={open} onOpenChange={handleDialogClose}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="mr-2 h-4 w-4" />New token</Button>
+            <Button ref={createButtonRef} size="sm"><Plus className="mr-2 h-4 w-4" />New token</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader><DialogTitle>Create token</DialogTitle></DialogHeader>
@@ -207,12 +215,15 @@ export function TokenSettings() {
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {tokens.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-20 text-center text-muted-foreground">No tokens yet.</TableCell>
-                </TableRow>
-              ) : tokens.map((t) => (
+            <TableBody {...listRegion}>
+              <ListStateRow
+                view={view}
+                colSpan={5}
+                noun="tokens"
+                emptyText="No tokens yet."
+                onRetry={() => { void tokensQuery.refetch() }}
+              />
+              {tokens.map((t) => (
                 <TableRow key={t.id} className="hover:bg-transparent">
                   <TableCell className="font-medium">{t.name}</TableCell>
                   <TableCell><Badge variant="secondary">{t.scope}</Badge></TableCell>

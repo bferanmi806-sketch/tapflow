@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys, verifyResetToken } from '@/lib/queries'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -22,18 +23,20 @@ export function ResetPassword() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') ?? ''
-  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid'>('loading')
 
   const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
 
-  useEffect(() => {
-    if (!token) { setStatus('invalid'); return }
-    fetch(`/api/v1/auth/reset-password/verify?token=${token}`)
-      .then((r) => r.ok ? setStatus('valid') : Promise.reject())
-      .catch(() => setStatus('invalid'))
-  }, [token])
+  // Derived, and checked once per visit — see Invite, which has the same shape.
+  const queryClient = useQueryClient()
+  const verify = useQuery({
+    queryKey: queryKeys.resetToken(token),
+    queryFn: () => verifyResetToken(token),
+    enabled: token !== '',
+    staleTime: Infinity,
+  })
+  const status = !token || verify.isError ? 'invalid' : verify.isPending ? 'loading' : 'valid'
 
   async function onSubmit(data: FormData) {
     try {
@@ -47,6 +50,8 @@ export function ResetPassword() {
         setError('root', { message: d.error ?? 'Failed to reset password' })
         return
       }
+      // A used token is no longer valid; kept cached, going back would show its form again.
+      queryClient.removeQueries({ queryKey: queryKeys.resetToken(token) })
       navigate('/login', { replace: true })
     } catch {
       setError('root', { message: 'Network error. Please try again.' })

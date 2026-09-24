@@ -1,4 +1,83 @@
-import type { App, Build, ReleaseGroup } from '@/lib/types'
+import type { ApiToken, App, Build, Recording, ReleaseGroup, ResourcePoint, TeamMember, WorkspaceSettings } from '@/lib/types'
+import { api } from '@/lib/api'
+import type { AuthUser } from '@/hooks/useAuth'
+
+/**
+ * Every query key the dashboard reads through TanStack Query, in one place so a mutation invalidates
+ * the key a page actually reads rather than a spelling of it (#845). App Center's builds keep their
+ * own composite key beside the page, which is the only reader.
+ */
+export const queryKeys = {
+  authStatus: ['auth', 'status'] as const,
+  me: ['auth', 'me'] as const,
+  inviteToken: (token: string) => ['invitations', 'verify', token] as const,
+  resetToken: (token: string) => ['auth', 'reset-password', token] as const,
+  apps: ['apps'] as const,
+  settings: ['settings'] as const,
+  tokens: ['tokens'] as const,
+  teamMembers: ['team', 'members'] as const,
+  /** Every build's recordings — what an upload invalidates, since it may be for any build on screen. */
+  allRecordings: ['recordings'] as const,
+  recordings: (buildId: number) => ['recordings', buildId] as const,
+  agents: ['agents'] as const,
+  resourceHistory: (agent: string, range: string) => ['agents', agent, 'resources', range] as const,
+}
+
+/** Whether the relay has an admin yet. Throws when it cannot be asked — a failure is not "no". */
+export async function getAuthStatus(): Promise<{ initialized: boolean }> {
+  const res = await fetch('/api/v1/auth/status')
+  if (!res.ok) throw new Error(`GET /api/v1/auth/status failed with ${res.status}`)
+  return res.json() as Promise<{ initialized: boolean }>
+}
+
+/**
+ * The signed-in user, or `null` when the relay says there is none. **Only a 401 says that.** A 500 or a
+ * dropped connection is a failed question, not an answer: read as "nobody", one bad refetch on window
+ * focus sent a signed-in person back to Login.
+ */
+export async function getMe(): Promise<AuthUser | null> {
+  const { data, status } = await api.get<AuthUser>('/api/v1/auth/me')
+  if (status === 401) return null
+  if (!data) throw new Error(`GET /api/v1/auth/me failed with ${status}`)
+  return data
+}
+
+/** The role an invitation grants. Throws for a token the relay refuses. */
+export async function verifyInvitation(token: string): Promise<{ role: string }> {
+  const res = await fetch(`/api/v1/invitations/verify?token=${token}`)
+  if (!res.ok) throw new Error(`invitation refused with ${res.status}`)
+  return res.json() as Promise<{ role: string }>
+}
+
+/**
+ * A GET that throws on a failed status. Every list here used to take a 500's error body as its rows —
+ * Tokens and Team then crashed on `.map` of an object — or, at best, showed a failure as "none yet".
+ */
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(path, { credentials: 'include' })
+  if (!res.ok) throw new Error(`GET ${path} failed with ${res.status}`)
+  return res.json() as Promise<T>
+}
+
+export const getSettings = () => getJson<WorkspaceSettings>('/api/v1/settings')
+export const getTokens = () => getJson<ApiToken[]>('/api/v1/tokens')
+export const getTeamMembers = () => getJson<TeamMember[]>('/api/v1/team/members')
+export const getRecordings = (buildId: number) => getJson<Recording[]>(`/api/v1/recordings?buildId=${buildId}`)
+export const getKnownAgents = () => getJson<string[]>('/api/v1/agents')
+
+/** One Mac's history over `range`. Takes Query's signal, so leaving the key or the tab abandons it. */
+export async function getResourceHistory(agent: string, range: string, signal?: AbortSignal): Promise<ResourcePoint[]> {
+  const res = await fetch(`/api/v1/agents/${encodeURIComponent(agent)}/resources?range=${range}`, { credentials: 'include', signal })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<ResourcePoint[]>
+}
+
+/** Resolves when a password-reset token is still good. Throws for one the relay refuses. */
+export async function verifyResetToken(token: string): Promise<true> {
+  const res = await fetch(`/api/v1/auth/reset-password/verify?token=${token}`)
+  if (!res.ok) throw new Error(`reset token refused with ${res.status}`)
+  return true
+}
 
 export async function getApps(): Promise<App[]> {
   const res = await fetch('/api/v1/apps', { credentials: 'include' })

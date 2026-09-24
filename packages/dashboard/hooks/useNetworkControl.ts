@@ -118,12 +118,22 @@ export function useNetworkControl({ sessionId, send, supported, deviceReady, han
   // A new session knows nothing about its device, and the previous session's answer is about somebody
   // else's. `DeviceViewer` drops frames addressed elsewhere, but it stays mounted across the switch,
   // so without this the old position would sit on screen until a new report replaced it.
-  useEffect(() => {
+  //
+  // The state half is reset while rendering (as `useDeviceReboot` does), so no commit shows the old
+  // session's position. The refs cannot be written during render and are reset in the effect below.
+  // Nothing later reads the state this resets — the readiness effect reads only `everReady` — so
+  // splitting the reset across the two phases changes no order. When readiness changes in the same
+  // commit, its effect still runs after and still has the last word, as before.
+  const [seenSession, setSeenSession] = useState(sessionId)
+  if (seenSession !== sessionId) {
+    setSeenSession(sessionId)
     setPosition('waiting')
     setSteerable(true)
     setReason(undefined)
-    lastReason.current = undefined
     setPending(false)
+  }
+  useEffect(() => {
+    lastReason.current = undefined
     requestId.current = null
     // **The initial value, which is `deviceReady` — not `false`.** This effect exists to put the hook
     // back where it starts for a new session, and where it starts is the ref's own initialiser.
@@ -160,11 +170,14 @@ export function useNetworkControl({ sessionId, send, supported, deviceReady, han
    * the moment this stops knowing, and waiting until it returns would leave the false answer on
    * screen for the whole boot.
    */
+  // Suppressed: the position this sets depends on `everReady`, a ref this same effect raises, so the two
+  // cannot be split between render and effect — and readiness is the relay's, reported from outside.
   useEffect(() => {
     if (deviceReady) {
       everReady.current = true
       // Readiness returning is what makes a read genuinely expected — the relay asks on join and the
       // agent reports on ready — so this is where `waiting` belongs, and where the deadline arms.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- depends on a ref this effect writes; see above
       setPosition('waiting')
       return
     }

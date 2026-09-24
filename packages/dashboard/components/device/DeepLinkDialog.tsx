@@ -14,22 +14,15 @@ interface Props {
 }
 
 export function DeepLinkDialog({ open, onOpenChange, openUrl }: Props) {
-  const [url, setUrl] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 0);
-    } else {
-      setUrl('');
-    }
-  }, [open]);
-
-  const handleSubmit = () => {
-    if (!url.trim()) return;
-    openUrl(url.trim());
-    onOpenChange(false);
-  };
+  // Counted per opening and used as the form's key, so each opening starts empty. Unmounting on close
+  // alone was not enough: Radix keeps the content mounted through its exit animation, and a dialog
+  // reopened in that window kept what was typed. Adjusted while rendering, not from an effect.
+  const [opening, setOpening] = useState(0);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (open) setOpening((n) => n + 1);
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -38,6 +31,33 @@ export function DeepLinkDialog({ open, onOpenChange, openUrl }: Props) {
         aria-describedby={undefined}
       >
         <DialogTitle className="sr-only">Open Deeplink</DialogTitle>
+        <DeepLinkForm key={opening} openUrl={openUrl} close={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * The field lives in its own component, keyed per opening above — so each opening starts empty without
+ * an effect clearing it (the effect ran a render late, and is what the rule flagged).
+ */
+function DeepLinkForm({ openUrl, close }: { openUrl: (url: string) => void; close: () => void }) {
+  const [url, setUrl] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => inputRef.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleSubmit = () => {
+    if (!url.trim()) return;
+    openUrl(url.trim());
+    close();
+  };
+
+  return (
+    <>
         <div className="flex items-center gap-3">
           <div className="flex-1 h-[32px] flex items-center gap-2 pl-[4px] pb-[1px]">
             <Search className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -65,7 +85,6 @@ export function DeepLinkDialog({ open, onOpenChange, openUrl }: Props) {
             Open
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }

@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getRecordings, queryKeys } from '@/lib/queries';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Recording } from '@/lib/types';
 
 interface Props {
   buildId: number;
-  refreshKey?: number;
 }
 
 function formatBytes(bytes: number): string {
@@ -33,31 +34,36 @@ function formatExpiry(iso: string): { label: string; urgent: boolean } {
   return { label: `Expires in ${Math.floor(h / 24)}d`, urgent: false };
 }
 
-export function RecordingsList({ buildId, refreshKey }: Props) {
-  const [recordings, setRecordings] = useState<Recording[]>([]);
-  const [loading, setLoading] = useState(true);
-  // Only show the loading text if the fetch is slow — avoids a flash on fast (few-ms) loads.
-  const [showLoading, setShowLoading] = useState(false);
-
+/**
+ * True once `active` has held for `ms` — so a loading line appears only for a load slow enough to
+ * notice, not as a flash on one that takes a few milliseconds. Set from the timer's callback, never
+ * synchronously in the effect.
+ */
+function useShownAfter(active: boolean, ms: number, load: unknown): boolean {
+  const [elapsed, setElapsed] = useState(false);
   useEffect(() => {
-    setLoading(true);
-    setShowLoading(false);
-    const t = setTimeout(() => setShowLoading(true), 250);
-    fetch(`/api/v1/recordings?buildId=${buildId}`, {
-      credentials: 'include',
-    })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: Recording[]) => setRecordings(data))
-      .catch(() => setRecordings([]))
-      .finally(() => {
-        clearTimeout(t);
-        setLoading(false);
-      });
-    return () => clearTimeout(t);
-  }, [buildId, refreshKey]);
+    if (!active) return;
+    const t = setTimeout(() => setElapsed(true), ms);
+    // Reset on the way out, so the next load waits its own `ms`. `load` names which load this is:
+    // switching build keeps `active` true throughout, so without it the timer would never restart.
+    return () => { clearTimeout(t); setElapsed(false); };
+  }, [active, ms, load]);
+  return active && elapsed;
+}
 
-  if (loading) {
+export function RecordingsList({ buildId }: Props) {
+  // Refreshed by invalidating this key when a recording finishes uploading (QASession).
+  const query = useQuery({ queryKey: queryKeys.recordings(buildId), queryFn: () => getRecordings(buildId) });
+  const recordings: Recording[] = query.data ?? [];
+  const showLoading = useShownAfter(query.isPending, 250, buildId);
+
+  if (query.isPending) {
     return showLoading ? <p className="text-xs text-muted-foreground">Loading recordings…</p> : null;
+  }
+
+  // Only a failure with nothing to show. A refresh that fails keeps the rows it had (see `listView`).
+  if (query.isError && !query.data) {
+    return <p className="py-8 text-center text-sm text-muted-foreground">Couldn&apos;t load recordings.</p>;
   }
 
   if (recordings.length === 0) {

@@ -313,3 +313,38 @@ describe('AndroidViewer — putting the device back the way it was found', () =>
     expect(rotateCalls(send)).toHaveLength(2)
   })
 })
+
+describe('AndroidViewer — a frame ahead of its description (#845)', () => {
+  beforeEach(() => {
+    captured.onResize = null; captured.onDecoderReady = null
+    recordCanvas.current = null
+    stubCanvasContext()
+  })
+
+  it('hides a frame the description has not caught up with, and shows it once the description moves on', () => {
+    const v = renderViewer(0)
+    readyToCompose()
+    expect(screen.queryByText(/Changing posture…|Waiting for stream…/)).toBeNull()
+
+    // A fold: the stream changes shape before the agent describes the new screen. Drawn into the old
+    // box it would flash stretched, so it waits.
+    act(() => { captured.onResize?.({ width: 2400, height: 1080 }) })
+    expect(screen.getByText('Changing posture…')).toBeInTheDocument()
+
+    // The description moves on — to a screen this frame does not match either. The frame is no longer
+    // the newer of the two, so the last one is shown rather than a wait with nothing to end it.
+    v.rerenderWith({ screenWidth: 1200, screenHeight: 2000 })
+    expect(screen.queryByText(/Changing posture…|Waiting for stream…/)).toBeNull()
+  })
+
+  it('does not hide the frame again when the description comes back to where it was', () => {
+    // A fold that flaps: the description leaves and returns with no new frame. Keyed on "ahead of this
+    // description", the frame counted as ahead again and the picture stayed hidden until a resize.
+    const v = renderViewer(0)
+    readyToCompose()
+    act(() => { captured.onResize?.({ width: 2400, height: 1080 }) })
+    v.rerenderWith({ screenWidth: 1200, screenHeight: 2000 })
+    v.rerenderWith({ screenWidth: 1080, screenHeight: 2400 })
+    expect(screen.queryByText(/Changing posture…|Waiting for stream…/)).toBeNull()
+  })
+})

@@ -564,4 +564,14 @@ describe('useNetworkControl', () => {
     view.rerender({ sessionId: 's2', deviceReady: true })
     expect(view.result.current.position).toBe('waiting')
   })
+
+  it('stops showing a request as pending once the session it was sent in has gone', () => {
+    // The answer, if it comes, is addressed to the old session and will never reach this one.
+    const { view, report } = setup()
+    report(steerable(true))
+    act(() => { view.result.current.toggle() })
+    expect(view.result.current.pending).toBe(true)
+    view.rerender({ sessionId: 's2', deviceReady: true })
+    expect(view.result.current.pending).toBe(false)
+  })
 })

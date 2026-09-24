@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getApps, getSettings, queryKeys } from '@/lib/queries'
 import { useTheme } from 'next-themes'
 import { useForm, useWatch, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -27,7 +29,6 @@ import { Pencil } from 'lucide-react'
 import { avatarColors } from '@/lib/avatar'
 import { useAuth } from '@/hooks/useAuth'
 
-type App = { id: number; name: string; bundle_id_key: string; platform: string }
 
 const workspaceSchema = z.object({
   teamName: z.string().min(1, 'Team name is required'),
@@ -59,22 +60,22 @@ export function DefaultSettings() {
   const canEditApps = user?.role === 'Admin' || user?.role === 'Developer'
 
   // ── Workspace (Admin only) ────────────────────────────────────────────────
-  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  // Shared with the sidebar, which shows the same name and logo — so saving here updates it too.
+  const settingsQuery = useQuery({ queryKey: queryKeys.settings, queryFn: getSettings, enabled: isAdmin })
+  // A picked file's preview, until the saved logo replaces it.
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const logoUrl = logoPreview ?? settingsQuery.data?.logo_url ?? null
   const logoRef = useRef<HTMLInputElement>(null)
 
+  // `values` rather than a reset from an effect. `keepDirtyValues`: a refetch on window focus must
+  // not overwrite what someone is typing.
   const workspaceForm = useForm<WorkspaceData>({
     resolver: zodResolver(workspaceSchema),
     defaultValues: { teamName: '', logo: null },
+    values: settingsQuery.data ? { teamName: settingsQuery.data.team_name, logo: null } : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
-
-  useEffect(() => {
-    if (!isAdmin) return
-    fetch('/api/v1/settings', { credentials: 'include' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((d: { team_name: string; logo_url: string | null } | null) => {
-        if (d) { workspaceForm.reset({ teamName: d.team_name, logo: null }); setLogoUrl(d.logo_url) }
-      })
-  }, [isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onWorkspaceSave(data: WorkspaceData) {
     const form = new FormData()
@@ -84,25 +85,24 @@ export function DefaultSettings() {
       const res = await fetch('/api/v1/settings', { method: 'PATCH', credentials: 'include', body: form })
       if (!res.ok) { toast.error('Failed to update workspace'); return }
       toast.success('Workspace updated')
+      void queryClient.invalidateQueries({ queryKey: queryKeys.settings })
     } catch {
       toast.error('Failed to update workspace')
     }
   }
 
   // ── Profile (everyone) ────────────────────────────────────────────────────
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  // Derived from the signed-in user rather than copied into state by an effect.
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const avatarUrl = avatarPreview ?? user?.avatarUrl ?? null
   const avatarRef = useRef<HTMLInputElement>(null)
 
   const profileForm = useForm<ProfileData>({
     resolver: zodResolver(profileSchema),
     defaultValues: { displayName: '', avatar: null },
+    values: user ? { displayName: user.displayName ?? '', avatar: null } : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
-
-  useEffect(() => {
-    if (!user) return
-    profileForm.reset({ displayName: user.displayName ?? '', avatar: null })
-    setAvatarUrl(user.avatarUrl ?? null)
-  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function onProfileSave(data: ProfileData) {
     const form = new FormData()
@@ -112,6 +112,7 @@ export function DefaultSettings() {
       const res = await fetch('/api/v1/profile', { method: 'PATCH', credentials: 'include', body: form })
       if (!res.ok) { toast.error('Failed to update profile'); return }
       toast.success('Profile updated')
+      void queryClient.invalidateQueries({ queryKey: queryKeys.me })
     } catch {
       toast.error('Failed to update profile')
     }
@@ -142,30 +143,20 @@ export function DefaultSettings() {
   }
 
   // ── Apps (Admin + Developer) ──────────────────────────────────────────────
-  const [apps, setApps] = useState<App[]>([])
+  // The same list App Center reads, so a rename or delete here shows there too.
+  const appsQuery = useQuery({ queryKey: queryKeys.apps, queryFn: getApps, enabled: canEditApps })
+  const apps = appsQuery.data ?? []
+  // Names being edited, by app. An app not in here shows its saved name.
   const [appNames, setAppNames] = useState<Record<number, string>>({})
   const [appsSaving, setAppsSaving] = useState<Record<number, boolean>>({})
   const [appsDeleting, setAppsDeleting] = useState<Record<number, boolean>>({})
-
-  useEffect(() => {
-    if (!canEditApps) return
-    fetch('/api/v1/apps', { credentials: 'include' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((d: { items: App[] } | null) => {
-        if (!d) return
-        setApps(d.items)
-        const names: Record<number, string> = {}
-        d.items.forEach((a) => { names[a.id] = a.name })
-        setAppNames(names)
-      })
-  }, [canEditApps])
 
   async function handleAppDelete(appId: number) {
     setAppsDeleting((p) => ({ ...p, [appId]: true }))
     try {
       const res = await fetch(`/api/v1/apps/${appId}`, { method: 'DELETE', credentials: 'include' })
       if (!res.ok) { toast.error('Failed to delete app'); return }
-      setApps((p) => p.filter((a) => a.id !== appId))
+      void queryClient.invalidateQueries({ queryKey: queryKeys.apps })
       toast.success('App deleted')
     } catch {
       toast.error('Failed to delete app')
@@ -181,10 +172,12 @@ export function DefaultSettings() {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: appNames[appId] }),
+        body: JSON.stringify({ name: appNames[appId] ?? apps.find((a) => a.id === appId)?.name }),
       })
       if (!res.ok) { toast.error('Failed to update app'); return }
       toast.success('App updated')
+      setAppNames(({ [appId]: _saved, ...rest }) => rest)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.apps })
     } catch {
       toast.error('Failed to update app')
     } finally {
@@ -230,7 +223,7 @@ export function DefaultSettings() {
                         onChange={(e) => {
                           const f = e.target.files?.[0]
                           if (f && f.size > 2 * 1024 * 1024) { toast.error('Image must be 2MB or less'); return }
-                          if (f) { field.onChange(f); setLogoUrl(URL.createObjectURL(f)) }
+                          if (f) { field.onChange(f); setLogoPreview(URL.createObjectURL(f)) }
                         }}
                       />
                     </div>
@@ -287,7 +280,7 @@ export function DefaultSettings() {
                       onChange={(e) => {
                         const f = e.target.files?.[0]
                         if (f && f.size > 2 * 1024 * 1024) { toast.error('Image must be 2MB or less'); return }
-                        if (f) { field.onChange(f); setAvatarUrl(URL.createObjectURL(f)) }
+                        if (f) { field.onChange(f); setAvatarPreview(URL.createObjectURL(f)) }
                       }}
                     />
                   </div>
@@ -344,7 +337,7 @@ export function DefaultSettings() {
                   <Label htmlFor={`app-${app.id}`}>App Name</Label>
                   <Input
                     id={`app-${app.id}`}
-                    value={appNames[app.id] ?? ''}
+                    value={appNames[app.id] ?? app.name}
                     onChange={(e) => setAppNames((p) => ({ ...p, [app.id]: e.target.value }))}
                   />
                   <div className="flex flex-col gap-1.5 mt-1">

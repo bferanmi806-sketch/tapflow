@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, fireEvent } from '@testing-library/react'
+import { focusManager, notifyManager } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { BreadcrumbProvider } from '@/hooks/useBreadcrumb'
 import { MacResources } from '@/src/pages/MacResources'
+import { withQuery } from './withQuery'
 import { HISTORY_POLL_MS, flowIntervalMs, type Range } from '@/lib/resource-chart'
 import type { AgentResources, BrowserInbound, SessionInfo } from '@/lib/types'
 
@@ -26,8 +28,15 @@ vi.mock('@visx/responsive', () => ({
 
 // A whole-hour zone, so which tick sits nearest an edge does not depend on the machine running this.
 const ORIGINAL_TZ = process.env.TZ
-beforeAll(() => { process.env.TZ = 'Asia/Seoul' })
+beforeAll(() => {
+  process.env.TZ = 'Asia/Seoul'
+  // TanStack Query hands results to React on a timer of its own. Under this file's fake timers that timer
+  // ran whenever the event loop happened to turn, so a result could land or not depending on the tests
+  // before it. A microtask is flushed by every `advanceTimersByTimeAsync`, which makes the order fixed.
+  notifyManager.setScheduler(queueMicrotask)
+})
 afterAll(() => {
+  notifyManager.setScheduler((cb) => setTimeout(cb, 0))
   if (ORIGINAL_TZ === undefined) delete process.env.TZ
   else process.env.TZ = ORIGINAL_TZ
 })
@@ -53,6 +62,8 @@ function deferred() {
 let knownAgents: string[] = []
 let respond: (range: string, agent: string) => Reply = () => ok(rows(20))
 const resourceCalls: string[] = []
+/** Each history request's abort signal, in the order they were sent. */
+const signals: AbortSignal[] = []
 
 const setVisibility = (state: DocumentVisibilityState) => {
   Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state })
@@ -65,8 +76,10 @@ beforeEach(() => {
   knownAgents = ['studio-mac']
   respond = () => ok(rows(20))
   resourceCalls.length = 0
-  vi.stubGlobal('fetch', vi.fn((input: string) => {
+  signals.length = 0
+  vi.stubGlobal('fetch', vi.fn((input: string, init?: RequestInit) => {
     if (input === '/api/v1/agents') return ok(knownAgents)
+    if (init?.signal) signals.push(init.signal)
     const m = /^\/api\/v1\/agents\/([^/]+)\/resources\?range=(\w+)$/.exec(input)
     if (!m) return Promise.reject(new Error(`unexpected fetch ${input}`))
     const agent = decodeURIComponent(m[1]!)
@@ -82,8 +95,8 @@ afterEach(() => {
 
 const advance = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms) })
 const flush = () => advance(0)
-async function mount() {
-  const utils = render(<BreadcrumbProvider><MacResources /></BreadcrumbProvider>)
+async function mount({ gcTime = 0 }: { gcTime?: number } = {}) {
+  const utils = render(withQuery(<BreadcrumbProvider><MacResources /></BreadcrumbProvider>, { gcTime }))
   await flush()
   await flush()
   return utils
@@ -323,5 +336,65 @@ describe('the live head', () => {
     await listed([agent('studio-mac', report())])
     expect(screen.getByText(/No data yet/)).toBeInTheDocument()
     expect(heads(container)).toEqual([])
+  })
+})
+
+describe('what moving the history to TanStack Query had to keep (#845)', () => {
+  it('abandons the request in flight when the tab is hidden', async () => {
+    // About 10,080 rows on 7d: a tab nobody can see should not keep receiving them.
+    const slow = deferred()
+    respond = () => slow.promise
+    await mount()
+    expect(signals.at(-1)?.aborted).toBe(false)
+    await act(async () => { setVisibility('hidden') })
+    expect(signals.at(-1)?.aborted, 'hiding the tab left the history request running').toBe(true)
+  })
+
+  it('replaces a first load that hangs on the next tick, instead of loading forever', async () => {
+    // `cancelRefetch` only replaces a refetch of a query that has rows; a first load that never answers
+    // was joined by every tick, and the chart said Loading until the tab was hidden.
+    respond = () => new Promise(() => {})
+    await mount()
+    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    respond = () => ok(rows(20))
+    await advance(HISTORY_POLL_MS['24h'])
+    expect(resourceCalls).toHaveLength(2)
+    expect(screen.queryByText('Loading…')).toBeNull()
+  })
+
+  it('asks again at once for a range that has only ever failed', async () => {
+    respond = (range) => (range === '24h' ? Promise.reject(new TypeError('Failed to fetch')) : ok(rows(20)))
+    // The app keeps a key's state for five minutes after leaving it; the failure has to still be there.
+    await mount({ gcTime: 5 * 60_000 })
+    expect(screen.getByText(/No data yet/)).toBeInTheDocument()
+    await selectRange('1h')
+    respond = () => ok(rows(20))
+    await selectRange('24h')
+    expect(resourceCalls.filter((c) => c.endsWith(':24h'))).toHaveLength(2)
+    expect(screen.queryByText(/No data yet/)).toBeNull()
+  })
+
+  it('does not move the default chart when the window regains focus', async () => {
+    // The relay lists Macs alphabetically, and only once one has reported; refetched on focus, a new
+    // name sorting first would have become the default.
+    knownAgents = ['studio-mac']
+    await mount()
+    knownAgents = ['a-new-mac', 'studio-mac']
+    await act(async () => { focusManager.setFocused(false); focusManager.setFocused(true) })
+    await flush()
+    expect(screen.getByRole('heading', { level: 2, name: 'studio-mac' })).toBeInTheDocument()
+    focusManager.setFocused(undefined)
+  })
+
+  it('keeps the Mac it defaulted to when another one connects', async () => {
+    // The sidebar lists connected Macs first; a default taken from that order would move the chart to
+    // whichever Mac connected last, without anyone picking it.
+    knownAgents = ['studio-mac', 'lab-mac']
+    await mount()
+    expect(screen.getByRole('heading', { level: 2, name: 'studio-mac' })).toBeInTheDocument()
+    await listed([agent('lab-mac', report())])
+    await flush()
+    expect(screen.getByRole('heading', { level: 2, name: 'studio-mac' })).toBeInTheDocument()
+    expect(resourceCalls.every((c) => c.startsWith('studio-mac:'))).toBe(true)
   })
 })

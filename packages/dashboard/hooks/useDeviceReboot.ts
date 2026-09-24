@@ -83,9 +83,18 @@ export function useDeviceReboot({ sessionId, deviceId, deviceReady, send, handle
   useEffect(() => { onCompleteRef.current = onShutdownComplete }, [onShutdownComplete])
   useEffect(() => { onErrorRef.current = onError }, [onError])
 
-  // A new session is a different device. Nothing in flight for the old one can be answered here.
+  // A new session is a different device, and a device that stopped being ready was taken by
+  // something else (below). Either ends the wait — adjusted while rendering, React's pattern for state
+  // that follows a prop, so no commit shows the old `pending`. The correlator is a ref, which may not be
+  // written during render, so its half stays in the effects below.
+  const [seen, setSeen] = useState({ sessionId, deviceReady })
+  if (seen.sessionId !== sessionId || seen.deviceReady !== deviceReady) {
+    setSeen({ sessionId, deviceReady })
+    if (seen.sessionId !== sessionId || !deviceReady) setPending(false)
+  }
+
+  // Nothing in flight for the old session can be answered here.
   useEffect(() => {
-    setPending(false)
     requestId.current = null
   }, [sessionId])
 
@@ -102,7 +111,6 @@ export function useDeviceReboot({ sessionId, deviceId, deviceReady, send, handle
    */
   useEffect(() => {
     if (deviceReady) return
-    setPending(false)
     requestId.current = null
   }, [deviceReady])
 
