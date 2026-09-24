@@ -295,7 +295,15 @@ export class SimulatorNetwork {
    *  `setOffline` and `checkLiveness` call `updateLiveness()` *after* their awaits, so a dispose
    *  landing in between was undone by whichever of them resumed next.
    *
-   *  **No test reaches this flag, and one that appeared to was deleted rather than kept.** The
+   *  **And a check that was queued before the dispose does nothing.** `clearInterval` stops new ticks,
+   *  not one already waiting behind a toggle's confirmation. Nothing it did was visible — the agent's
+   *  disconnect queues `forget` for every device, which rewrites the same rule, and its report had no
+   *  session left to reach — but after a dispose no check should act, and in the tests that one wrote
+   *  into a directory teardown was removing (#826). This half is tested — the argv of the host run is
+   *  the seam — and a check already past this point is left to finish, since stopping a host run
+   *  halfway leaves the rule in whatever state it reached.
+   *
+   *  **The interval half has no test, and one that appeared to was deleted rather than kept.** The
    *  scenario it needs — a dispose landing mid-operation, then a state file that makes the watcher
    *  report on its next tick — did not report even with the flag removed *and* `clearInterval` taken
    *  out of `dispose`, so the assertion was green against every mutation of the thing it named.
@@ -861,6 +869,17 @@ export class SimulatorNetwork {
     this.updateLiveness()
   }
 
+  /** Settles once nothing is queued or running, including work queued while waiting. `dispose` does
+   *  not cancel a run already in progress, so this is how a caller that removes what the runs write
+   *  to — the tests' temporary directory — waits for them first. */
+  async idle(): Promise<void> {
+    let tail: Promise<unknown>
+    do {
+      tail = this.filterQueue
+      await tail
+    } while (tail !== this.filterQueue)
+  }
+
   // ── liveness: enforcement that stops after the fact ────────────────────────
 
   /**
@@ -921,7 +940,7 @@ export class SimulatorNetwork {
    * kernel passing that simulator's traffic for the whole of it.
    */
   private async checkLivenessLocked(): Promise<void> {
-    if (this.offline.size === 0) return
+    if (this.disposed || this.offline.size === 0) return
     const file = this.readFilterState()
     const now = Math.floor(Date.now() / 1000)
 
