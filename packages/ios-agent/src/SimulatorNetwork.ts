@@ -301,7 +301,9 @@ export class SimulatorNetwork {
    *  session left to reach — but after a dispose no check should act, and in the tests that one wrote
    *  into a directory teardown was removing (#826). This half is tested — the argv of the host run is
    *  the seam — and a check already past this point is left to finish, since stopping a host run
-   *  halfway leaves the rule in whatever state it reached.
+   *  halfway leaves the rule in whatever state it reached. A check that reaches here after `resume()`
+   *  is an ordinary one and runs: it reads everything when it runs, not when it was queued, so the
+   *  watcher `resume()` restarts would do the same a tick later.
    *
    *  **The interval half has no test, and one that appeared to was deleted rather than kept.** The
    *  scenario it needs — a dispose landing mid-operation, then a state file that makes the watcher
