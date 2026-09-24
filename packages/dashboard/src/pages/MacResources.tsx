@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getKnownAgents, getResourceHistory, queryKeys } from '@/lib/queries'
 import { useRelay } from '@/hooks/useRelay'
 import { useBreadcrumb } from '@/hooks/useBreadcrumb'
 import { useDocumentVisible } from '@/hooks/useDocumentVisible'
@@ -27,12 +29,6 @@ import {
 } from '@/lib/resource-chart'
 import type { BrowserInbound, SessionInfo } from '@/lib/types'
 
-interface ResourcePoint {
-  cpu_percent: number
-  mem_percent: number
-  recorded_at: string
-}
-
 type ChartConfig = Record<string, { label: string; color: string }>
 
 const chartConfig = {
@@ -44,13 +40,9 @@ const RANGE_LABELS: Record<Range, string> = { '1h': '1h', '6h': '6h', '24h': '24
 
 export function MacResources() {
   const [sessions, setSessions] = useState<SessionInfo[]>([])
-  const [knownAgents, setKnownAgents] = useState<string[]>([])
-  const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
+  // The Mac someone picked. Until they pick one, the page shows the first the relay knows (below).
+  const [chosenAgent, setSelectedAgent] = useState<string | null>(null)
   const [range, setRange] = useState<Range>('24h')
-  // **Tagged with the Mac and range it was fetched for.** A response can then never be drawn under a
-  // different selection, and "loading" is just "nothing yet for this key" — so a refresh of the same key
-  // keeps the chart up instead of replacing it with a spinner every poll.
-  const [history, setHistory] = useState<{ key: string; points: ResourcePoint[] } | null>(null)
 
   const visible = useDocumentVisible()
   // **The window's edge is the clock, not the fetch** (#751). It was the moment the history arrived, so an
@@ -76,62 +68,50 @@ export function MacResources() {
     return () => clearInterval(id)
   }, [connected, send])
 
-  useEffect(() => {
-    fetch('/api/v1/agents', { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setKnownAgents)
-  }, [])
+  // A failure reads as "none registered", as before: the connected Macs still list, from the relay socket.
+  const agentsQuery = useQuery({ queryKey: queryKeys.agents, queryFn: getKnownAgents })
+  const knownAgents = agentsQuery.data ?? []
 
   const connectedNames = sessions.map((s) => s.agentName).filter(Boolean) as string[]
   const allAgents = [...new Set([...connectedNames, ...knownAgents])]
   const connectedSet = new Set(connectedNames)
 
-  useEffect(() => {
-    if (!selectedAgent && allAgents.length > 0) setSelectedAgent(allAgents[0])
-  }, [allAgents.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
+  /**
+   * **Derived, and from the registered list rather than the one on screen.** The sidebar lists connected
+   * Macs first, so its first entry changes whenever a Mac connects or drops — a default taken from it would
+   * move the chart to another Mac nobody picked. The relay's registered list keeps its order. Nothing is
+   * shown until that list has answered, so the default does not start on a connected Mac and then jump.
+   */
+  const selectedAgent = chosenAgent ?? (agentsQuery.isPending ? null : knownAgents[0] ?? connectedNames[0] ?? null)
 
-  const historyKey = selectedAgent ? `${selectedAgent}\n${range}` : null
-  // When a history last finished loading, and for which key — so a tab brought back does not re-send the
-  // whole window (about 10,080 rows on 7d) before its interval has come due. **Finished, not started**: a
-  // first load cut short by hiding the tab would otherwise count as fresh, and the page would sit on Loading
-  // for the rest of the interval.
-  const loadedAt = useRef<{ key: string; at: number } | null>(null)
+  /**
+   * **The history is Query's to hold, and when to ask for it is this page's.** Query keys it by Mac and range,
+   * so an answer can never be drawn under another selection, and it keeps the last good rows through a failed
+   * refresh. It does not fetch on its own (`enabled: false`), because its own polling would get two things
+   * wrong here: `refetchInterval` never starts a request while one is in flight, so one that hangs would stop
+   * the chart for good; and it restarts its clock whenever the tab comes back, where this waits out only the
+   * rest of the interval — about 10,080 rows on 7d is not re-sent for a tab switch.
+   */
+  const queryClient = useQueryClient()
+  const historyKey = selectedAgent ? queryKeys.resourceHistory(selectedAgent, range) : null
+  const history = useQuery({
+    queryKey: historyKey ?? queryKeys.resourceHistory('', range),
+    queryFn: ({ signal }) => getResourceHistory(selectedAgent as string, range, signal),
+    enabled: false,
+  })
+  const refetchHistory = history.refetch
 
   useEffect(() => {
     if (!selectedAgent || !visible) return
-    const key = `${selectedAgent}\n${range}`
+    const historyKey = queryKeys.resourceHistory(selectedAgent, range)
     const poll = HISTORY_POLL_MS[range]
-    const controller = new AbortController()
-    let latest = 0
-    const load = () => {
-      const seq = ++latest
-      // **Checked on both paths rather than left to `fetch` to reject.** An abort that lands after the body
-      // has been read rejects nothing, and that late response is exactly the one that would draw the range
-      // the reader just left. `seq` does the same for two polls of one key answering out of order.
-      const current = () => !controller.signal.aborted && seq === latest
-      fetch(`/api/v1/agents/${encodeURIComponent(selectedAgent)}/resources?range=${range}`, {
-        credentials: 'include',
-        signal: controller.signal,
-      })
-        .then((r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`)
-          return r.json() as Promise<ResourcePoint[]>
-        })
-        .then((points) => {
-          if (!current()) return
-          loadedAt.current = { key, at: Date.now() }
-          setHistory({ key, points })
-        })
-        // A failed refresh keeps what is drawn: one dropped request emptying a monitoring chart reports an
-        // outage that did not happen. A failed *first* load still settles on the empty state.
-        .catch(() => {
-          if (!current()) return
-          loadedAt.current = { key, at: Date.now() }
-          setHistory((prev) => (prev?.key === key ? prev : { key, points: [] }))
-        })
-    }
-    const last = loadedAt.current
-    const wait = last?.key === key ? Math.max(0, poll - (Date.now() - last.at)) : 0
+    // Newest wins: a tick cancels whatever is still in flight for this key, as the `seq` check used to.
+    const load = () => { void refetchHistory({ cancelRefetch: true }) }
+    // **Finished, not started**: the age of what is drawn, success or failure. A first load cut short by
+    // hiding the tab never finished, so it counts as nothing and the page loads at once on return.
+    const state = queryClient.getQueryState(historyKey)
+    const finishedAt = Math.max(state?.dataUpdatedAt ?? 0, state?.errorUpdatedAt ?? 0)
+    const wait = finishedAt > 0 ? Math.max(0, poll - (Date.now() - finishedAt)) : 0
     let id: ReturnType<typeof setInterval> | undefined
     const start = () => {
       load()
@@ -140,15 +120,17 @@ export function MacResources() {
     const deferred = wait > 0 ? setTimeout(start, wait) : undefined
     if (wait === 0) start()
     return () => {
-      controller.abort()
       clearTimeout(deferred)
       clearInterval(id)
+      // Leaving the key or hiding the tab abandons what is in flight, as the AbortController did.
+      void queryClient.cancelQueries({ queryKey: historyKey, exact: true })
     }
-  }, [selectedAgent, range, visible])
+  }, [selectedAgent, range, visible, refetchHistory, queryClient])
 
-  const loaded = history !== null && history.key === historyKey
+  // A first load that failed settles on the empty state rather than loading forever.
+  const loaded = history.data !== undefined || history.isError
   const loading = historyKey !== null && !loaded
-  const chartData = (loaded ? history.points : []).map((p) => ({
+  const chartData = (history.data ?? []).map((p) => ({
     time: p.recorded_at,
     cpu: roundPercent(p.cpu_percent),
     mem: roundPercent(p.mem_percent),

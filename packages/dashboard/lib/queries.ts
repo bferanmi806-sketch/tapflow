@@ -1,4 +1,4 @@
-import type { ApiToken, App, Build, Recording, ReleaseGroup, TeamMember, WorkspaceSettings } from '@/lib/types'
+import type { ApiToken, App, Build, Recording, ReleaseGroup, ResourcePoint, TeamMember, WorkspaceSettings } from '@/lib/types'
 import { api } from '@/lib/api'
 import type { AuthUser } from '@/hooks/useAuth'
 
@@ -17,6 +17,8 @@ export const queryKeys = {
   tokens: ['tokens'] as const,
   teamMembers: ['team', 'members'] as const,
   recordings: (buildId: number) => ['recordings', buildId] as const,
+  agents: ['agents'] as const,
+  resourceHistory: (agent: string, range: string) => ['agents', agent, 'resources', range] as const,
 }
 
 /** Whether the relay has an admin yet. Throws when it cannot be asked — a failure is not "no". */
@@ -53,6 +55,14 @@ export const getSettings = () => getJson<WorkspaceSettings>('/api/v1/settings')
 export const getTokens = () => getJson<ApiToken[]>('/api/v1/tokens')
 export const getTeamMembers = () => getJson<TeamMember[]>('/api/v1/team/members')
 export const getRecordings = (buildId: number) => getJson<Recording[]>(`/api/v1/recordings?buildId=${buildId}`)
+export const getKnownAgents = () => getJson<string[]>('/api/v1/agents')
+
+/** One Mac's history over `range`. Takes Query's signal, so leaving the key or the tab abandons it. */
+export async function getResourceHistory(agent: string, range: string, signal?: AbortSignal): Promise<ResourcePoint[]> {
+  const res = await fetch(`/api/v1/agents/${encodeURIComponent(agent)}/resources?range=${range}`, { credentials: 'include', signal })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<ResourcePoint[]>
+}
 
 /** Resolves when a password-reset token is still good. Throws for one the relay refuses. */
 export async function verifyResetToken(token: string): Promise<true> {

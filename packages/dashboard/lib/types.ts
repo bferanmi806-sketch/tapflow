@@ -98,3 +98,10 @@ export interface WorkspaceSettings {
   team_name: string
   logo_url: string | null
 }
+
+/** A row of `GET /api/v1/agents/:name/resources`. */
+export interface ResourcePoint {
+  cpu_percent: number
+  mem_percent: number
+  recorded_at: string
+}
