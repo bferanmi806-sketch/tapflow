@@ -28,10 +28,16 @@ export async function getAuthStatus(): Promise<{ initialized: boolean }> {
   return res.json() as Promise<{ initialized: boolean }>
 }
 
-/** The signed-in user, or `null` when the relay says there is none (401, or no body). */
+/**
+ * The signed-in user, or `null` when the relay says there is none. **Only a 401 says that.** A 500 or a
+ * dropped connection is a failed question, not an answer: read as "nobody", one bad refetch on window
+ * focus sent a signed-in person back to Login.
+ */
 export async function getMe(): Promise<AuthUser | null> {
   const { data, status } = await api.get<AuthUser>('/api/v1/auth/me')
-  return status === 401 || !data ? null : data
+  if (status === 401) return null
+  if (!data) throw new Error(`GET /api/v1/auth/me failed with ${status}`)
+  return data
 }
 
 /** The role an invitation grants. Throws for a token the relay refuses. */

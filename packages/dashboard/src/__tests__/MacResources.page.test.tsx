@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, fireEvent } from '@testing-library/react'
-import { notifyManager } from '@tanstack/react-query'
+import { focusManager, notifyManager } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { BreadcrumbProvider } from '@/hooks/useBreadcrumb'
 import { MacResources } from '@/src/pages/MacResources'
@@ -95,8 +95,8 @@ afterEach(() => {
 
 const advance = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms) })
 const flush = () => advance(0)
-async function mount() {
-  const utils = render(withQuery(<BreadcrumbProvider><MacResources /></BreadcrumbProvider>))
+async function mount({ gcTime = 0 }: { gcTime?: number } = {}) {
+  const utils = render(withQuery(<BreadcrumbProvider><MacResources /></BreadcrumbProvider>, { gcTime }))
   await flush()
   await flush()
   return utils
@@ -348,6 +348,42 @@ describe('what moving the history to TanStack Query had to keep (#845)', () => {
     expect(signals.at(-1)?.aborted).toBe(false)
     await act(async () => { setVisibility('hidden') })
     expect(signals.at(-1)?.aborted, 'hiding the tab left the history request running').toBe(true)
+  })
+
+  it('replaces a first load that hangs on the next tick, instead of loading forever', async () => {
+    // `cancelRefetch` only replaces a refetch of a query that has rows; a first load that never answers
+    // was joined by every tick, and the chart said Loading until the tab was hidden.
+    respond = () => new Promise(() => {})
+    await mount()
+    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    respond = () => ok(rows(20))
+    await advance(HISTORY_POLL_MS['24h'])
+    expect(resourceCalls).toHaveLength(2)
+    expect(screen.queryByText('Loading…')).toBeNull()
+  })
+
+  it('asks again at once for a range that has only ever failed', async () => {
+    respond = (range) => (range === '24h' ? Promise.reject(new TypeError('Failed to fetch')) : ok(rows(20)))
+    // The app keeps a key's state for five minutes after leaving it; the failure has to still be there.
+    await mount({ gcTime: 5 * 60_000 })
+    expect(screen.getByText(/No data yet/)).toBeInTheDocument()
+    await selectRange('1h')
+    respond = () => ok(rows(20))
+    await selectRange('24h')
+    expect(resourceCalls.filter((c) => c.endsWith(':24h'))).toHaveLength(2)
+    expect(screen.queryByText(/No data yet/)).toBeNull()
+  })
+
+  it('does not move the default chart when the window regains focus', async () => {
+    // The relay lists Macs alphabetically, and only once one has reported; refetched on focus, a new
+    // name sorting first would have become the default.
+    knownAgents = ['studio-mac']
+    await mount()
+    knownAgents = ['a-new-mac', 'studio-mac']
+    await act(async () => { focusManager.setFocused(false); focusManager.setFocused(true) })
+    await flush()
+    expect(screen.getByRole('heading', { level: 2, name: 'studio-mac' })).toBeInTheDocument()
+    focusManager.setFocused(undefined)
   })
 
   it('keeps the Mac it defaulted to when another one connects', async () => {

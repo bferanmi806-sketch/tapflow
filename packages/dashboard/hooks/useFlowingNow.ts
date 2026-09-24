@@ -9,9 +9,10 @@ export function useFlowingNow(intervalMs: number, active: boolean): number {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (!active) return
-    // Synchronising with the clock, which is what an effect is for: on resume the reading is caught up in
-    // the same commit. Deferring it to a 0 ms timer would quiet the rule and draw one frame of the old
-    // window — the thing #751 fixed.
+    // Synchronising with the clock, which is what an effect is for, and it cannot move to render: reading
+    // `Date.now()` there is impure. For the triggers that matter — a tab brought back, a range picked —
+    // React flushes this effect before paint, so the old window is never drawn. A 0 ms timer would quiet
+    // the rule and draw one frame of it: the thing #751 fixed.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- a timer sync; see above
     setNow(Date.now())
     const id = setInterval(() => setNow(Date.now()), intervalMs)

@@ -61,7 +61,8 @@ export function RecordingsList({ buildId }: Props) {
     return showLoading ? <p className="text-xs text-muted-foreground">Loading recordings…</p> : null;
   }
 
-  if (query.isError) {
+  // Only a failure with nothing to show. A refresh that fails keeps the rows it had (see `listView`).
+  if (query.isError && !query.data) {
     return <p className="py-8 text-center text-sm text-muted-foreground">Couldn&apos;t load recordings.</p>;
   }
 

@@ -101,13 +101,17 @@ export function AndroidViewer({
    *  it to tell the flash — which ends on its own — from a description with no frame behind it,
    *  which does not. See `showsPicture`. */
   //
-  //  Held as *which description* the frame was ahead of: once the description moves on, the frame is
-  //  no longer the newer of the two, and that follows during render rather than from an effect clearing
-  //  a boolean a commit late. `useDecoderStream` calls the latest `onResize`, so the key it reads is
-  //  this render's.
+  //  Cleared while rendering once the description moves on, rather than by an effect a commit late —
+  //  and for good, until the next frame. Keyed instead ("ahead of *this* description"), a description
+  //  that left and came back made the frame ahead again with no new frame behind it: A → B → A hid the
+  //  picture until a resize that might never come.
+  const [frameIsAhead, setFrameIsAhead] = useState(false);
   const descriptionKey = `${streamRotation}:${screenWidth ?? ''}:${screenHeight ?? ''}`;
-  const [frameAheadOf, setFrameAheadOf] = useState<string | null>(null);
-  const frameIsAhead = frameAheadOf === descriptionKey;
+  const [shownDescription, setShownDescription] = useState(descriptionKey);
+  if (shownDescription !== descriptionKey) {
+    setShownDescription(descriptionKey);
+    setFrameIsAhead(false);
+  }
   // Rotation intent is owned locally (iOS IOSViewer pattern). It only drives CSS shell
   // rotation for portrait-locked apps; rotation-capable apps follow the actual stream.
   const [userWantsLandscape, setUserWantsLandscape] = useState(false);
@@ -144,7 +148,7 @@ export function AndroidViewer({
       if (!prev || prev.width !== size.width || prev.height !== size.height) {
         videoSizeRef.current = size
         setVideoSize(size)
-        setFrameAheadOf(descriptionKey)
+        setFrameIsAhead(true)
       }
     },
     onDecoderReady: (decoder) => {

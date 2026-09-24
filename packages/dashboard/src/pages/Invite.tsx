@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys, verifyInvitation } from '@/lib/queries'
 import { useForm, useWatch, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -41,6 +41,7 @@ export function Invite() {
   // Derived rather than set from an effect: with no token the page is invalid on its first render,
   // not after a blank one. Checked once per visit — refetched on focus, a token accepted in another
   // tab would take this form away mid-way.
+  const queryClient = useQueryClient()
   const verify = useQuery({
     queryKey: queryKeys.inviteToken(token),
     queryFn: () => verifyInvitation(token),
@@ -60,6 +61,8 @@ export function Invite() {
 
       const res = await fetch('/api/v1/invitations/accept', { method: 'POST', body: form })
       if (!res.ok) { setError('root', { message: 'Failed to accept invitation' }); return }
+      // A used token is no longer valid; kept cached, going back would show its form again.
+      queryClient.removeQueries({ queryKey: queryKeys.inviteToken(token) })
       navigate('/app-center', { replace: true })
     } catch {
       setError('root', { message: 'Network error. Please try again.' })

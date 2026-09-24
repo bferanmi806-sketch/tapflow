@@ -69,7 +69,9 @@ export function MacResources() {
   }, [connected, send])
 
   // A failure reads as "none registered", as before: the connected Macs still list, from the relay socket.
-  const agentsQuery = useQuery({ queryKey: queryKeys.agents, queryFn: getKnownAgents })
+  // Once per visit, as before. The relay lists these alphabetically and only once a Mac has reported, so
+  // a refetch on window focus could put a new name first — and move the default chart to it.
+  const agentsQuery = useQuery({ queryKey: queryKeys.agents, queryFn: getKnownAgents, refetchOnWindowFocus: false })
   const knownAgents = agentsQuery.data ?? []
 
   const connectedNames = sessions.map((s) => s.agentName).filter(Boolean) as string[]
@@ -105,13 +107,25 @@ export function MacResources() {
     if (!selectedAgent || !visible) return
     const historyKey = queryKeys.resourceHistory(selectedAgent, range)
     const poll = HISTORY_POLL_MS[range]
-    // Newest wins: a tick cancels whatever is still in flight for this key, as the `seq` check used to.
-    const load = () => { void refetchHistory({ cancelRefetch: true }) }
+    // Newest wins: a tick replaces whatever is still in flight for this key, as the `seq` check used to.
+    // `cancelRefetch` does that only for a query that already has rows — a first load that hangs would
+    // be joined by every tick, and the chart would say Loading until the tab was hidden. So a pending
+    // first load is cancelled by hand before the next request goes.
+    const load = () => {
+      const now = queryClient.getQueryState(historyKey)
+      if (now?.fetchStatus === 'fetching' && now.data === undefined) {
+        void queryClient.cancelQueries({ queryKey: historyKey, exact: true }).then(() => refetchHistory())
+      } else {
+        void refetchHistory({ cancelRefetch: true })
+      }
+    }
     // **Finished, not started**: the age of what is drawn, success or failure. A first load cut short by
     // hiding the tab never finished, so it counts as nothing and the page loads at once on return.
     const state = queryClient.getQueryState(historyKey)
     const finishedAt = Math.max(state?.dataUpdatedAt ?? 0, state?.errorUpdatedAt ?? 0)
-    const wait = finishedAt > 0 ? Math.max(0, poll - (Date.now() - finishedAt)) : 0
+    // A key that has only ever failed has nothing to hold on screen, so it is asked again at once — a
+    // failed 7d load revisited within the cache's five minutes would otherwise wait out up to 15.
+    const wait = state?.data !== undefined && finishedAt > 0 ? Math.max(0, poll - (Date.now() - finishedAt)) : 0
     let id: ReturnType<typeof setInterval> | undefined
     const start = () => {
       load()

@@ -336,4 +336,15 @@ describe('AndroidViewer — a frame ahead of its description (#845)', () => {
     v.rerenderWith({ screenWidth: 1200, screenHeight: 2000 })
     expect(screen.queryByText(/Changing posture…|Waiting for stream…/)).toBeNull()
   })
+
+  it('does not hide the frame again when the description comes back to where it was', () => {
+    // A fold that flaps: the description leaves and returns with no new frame. Keyed on "ahead of this
+    // description", the frame counted as ahead again and the picture stayed hidden until a resize.
+    const v = renderViewer(0)
+    readyToCompose()
+    act(() => { captured.onResize?.({ width: 2400, height: 1080 }) })
+    v.rerenderWith({ screenWidth: 1200, screenHeight: 2000 })
+    v.rerenderWith({ screenWidth: 1080, screenHeight: 2400 })
+    expect(screen.queryByText(/Changing posture…|Waiting for stream…/)).toBeNull()
+  })
 })

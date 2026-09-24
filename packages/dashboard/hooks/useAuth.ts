@@ -19,10 +19,15 @@ interface AuthState {
  * `/auth/me` on its own (#845).
  *
  * **No redirect here.** `DashboardLayout` renders `<Navigate to="/login">` when `user` is null, which
- * made the `navigate` this hook used to call a duplicate. **Loading until an answer**, as before: a
- * relay that cannot be reached leaves the page blank rather than sending a signed-in person to log in.
+ * made the `navigate` this hook used to call a duplicate.
+ *
+ * **Loading until the first answer, and never again after it.** The layout renders nothing while
+ * loading, and this query refetches on window focus. Keyed on `isSuccess`, one failed refetch — a
+ * Wi-Fi blip, a relay restart — unmounted the whole dashboard, a streaming QA session with it. Keyed
+ * on having an answer, a failed refetch keeps the last user; a first load that fails stays blank, as
+ * it always did.
  */
 export function useAuth(): AuthState {
   const me = useQuery({ queryKey: queryKeys.me, queryFn: getMe })
-  return { user: me.data ?? null, loading: !me.isSuccess }
+  return { user: me.data ?? null, loading: me.data === undefined }
 }

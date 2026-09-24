@@ -262,3 +262,68 @@ describe('signing in after the session ran out', () => {
     expect(screen.queryByText('redirected to login')).toBeNull()
   })
 })
+
+describe('a signed-in session through a bad refetch', () => {
+  // `/auth/me` refetches on window focus. The layout renders nothing while loading and redirects on
+  // "nobody", so what a failed refetch means decides whether a streaming QA session survives a blip.
+  function Guarded() {
+    const { user, loading } = useAuth()
+    if (loading) return <p>blank</p>
+    return user ? <p>dashboard for {user.role}</p> : <p>redirected to login</p>
+  }
+  const signedIn = () => json({ id: 1, email: 'a@b.c', displayName: null, avatarUrl: null, role: 'Admin' })
+
+  it.each([
+    ['a dropped connection', () => Promise.reject(new TypeError('Failed to fetch'))],
+    ['a 502 from the relay', () => Promise.resolve(json({ error: 'bad gateway' }, 502))],
+  ])('keeps the dashboard up through %s', async (_, fail) => {
+    fetchMock.mockImplementation(async () => signedIn())
+    const client = new QueryClient({ defaultOptions: { queries: { retry: 0 } } })
+    render(<QueryClientProvider client={client}><Guarded /></QueryClientProvider>)
+    await screen.findByText('dashboard for Admin')
+
+    fetchMock.mockImplementation(fail as () => Promise<Response>)
+    await act(async () => { await client.refetchQueries({ queryKey: ['auth', 'me'] }) })
+    await settle()
+    expect(screen.getByText('dashboard for Admin')).toBeInTheDocument()
+  })
+
+  it('still sends a session the relay has ended to sign in', async () => {
+    // The twin of the case above: only a 401 means "nobody".
+    fetchMock.mockImplementation(async () => signedIn())
+    const client = new QueryClient({ defaultOptions: { queries: { retry: 0 } } })
+    render(<QueryClientProvider client={client}><Guarded /></QueryClientProvider>)
+    await screen.findByText('dashboard for Admin')
+    fetchMock.mockImplementation(async () => json({ error: 'expired' }, 401))
+    await act(async () => { await client.refetchQueries({ queryKey: ['auth', 'me'] }) })
+    expect(await screen.findByText('redirected to login')).toBeInTheDocument()
+  })
+})
+
+describe('signing in on a browser someone else used', () => {
+  it('does not keep what was cached for them', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/v1/auth/status') return json({ initialized: true })
+      if (url.endsWith('/api/v1/auth/login')) return json({ ok: true })
+      return json({}, 404)
+    })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: 0 } } })
+    client.setQueryData(['tokens'], [{ id: 1, name: 'previous user token' }])
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/login']}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/app-center" element={<p>app center</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await userEvent.type(await screen.findByLabelText('Email'), 'admin@example.com')
+    await userEvent.type(screen.getByLabelText('Password'), 'password123')
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await screen.findByText('app center')
+    expect(client.getQueryData(['tokens'])).toBeUndefined()
+  })
+})

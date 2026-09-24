@@ -36,9 +36,10 @@ export function Login() {
     try {
       const { status } = await api.post('/api/v1/auth/login', { email: data.email, password: data.password })
       if (status !== 200) { setError('root', { message: 'Invalid email or password' }); return }
-      // The cached user may be the "nobody" that sent this person here. Left in place, the layout
-      // would read it on arrival and send them straight back to sign in again.
-      queryClient.removeQueries({ queryKey: queryKeys.me })
+      // Everything cached belongs to whoever was signed in before — and the cached user may be the
+      // "nobody" that sent this person here, which the layout would read on arrival and bounce them
+      // back to sign in. Sign-out clears the cache too; a session that expired never signed out.
+      queryClient.clear()
       navigate('/app-center', { replace: true })
     } catch {
       setError('root', { message: 'Network error. Please try again.' })

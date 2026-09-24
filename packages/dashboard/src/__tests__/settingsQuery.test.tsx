@@ -127,6 +127,20 @@ describe('one query, read in two places', () => {
     expect((field as HTMLInputElement).value).toBe('Half typ')
   })
 
+  it('keeps the recordings on screen when a refresh of them fails', async () => {
+    let fail = false
+    const row: Recording = { id: 1, url: '/r/1.mp4', sessionId: null, fileSize: 1024 * 1024, mime: 'video/mp4', createdAt: '2026-09-24T01:00:00Z', expiresAt: new Date(Date.now() + 86_400_000).toISOString() }
+    route = () => (fail ? json({ error: 'boom' }, 500) : json([row]))
+    const { client } = renderWith(<RecordingsList buildId={7} />)
+    expect(await screen.findByText(/1\.0 MB/)).toBeInTheDocument()
+    fail = true
+    await act(async () => { await client.refetchQueries({ queryKey: ['recordings'] }) })
+    // Past the failure's delivery to React, so "still there" is not "not yet replaced".
+    await act(async () => { await new Promise((r) => setTimeout(r, 20)) })
+    expect(screen.getByText(/1\.0 MB/)).toBeInTheDocument()
+    expect(screen.queryByText("Couldn't load recordings.")).toBeNull()
+  })
+
   it('a finished upload refreshes the recordings list', async () => {
     let rows: Recording[] = []
     route = () => json(rows)

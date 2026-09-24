@@ -222,7 +222,6 @@ export function TokenSettings() {
                 noun="tokens"
                 emptyText="No tokens yet."
                 onRetry={() => { void tokensQuery.refetch() }}
-                retrying={tokensQuery.isFetching}
               />
               {tokens.map((t) => (
                 <TableRow key={t.id} className="hover:bg-transparent">

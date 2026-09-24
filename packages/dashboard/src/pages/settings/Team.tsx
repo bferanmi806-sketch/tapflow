@@ -235,7 +235,6 @@ export function TeamSettings() {
                 noun="team members"
                 emptyText="No members yet."
                 onRetry={() => { void membersQuery.refetch() }}
-                retrying={membersQuery.isFetching}
               />
               {members.map((m) => (
                 <TableRow key={m.id} className="hover:bg-transparent">

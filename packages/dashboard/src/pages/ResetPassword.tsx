@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys, verifyResetToken } from '@/lib/queries'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -29,6 +29,7 @@ export function ResetPassword() {
   })
 
   // Derived, and checked once per visit — see Invite, which has the same shape.
+  const queryClient = useQueryClient()
   const verify = useQuery({
     queryKey: queryKeys.resetToken(token),
     queryFn: () => verifyResetToken(token),
@@ -49,6 +50,8 @@ export function ResetPassword() {
         setError('root', { message: d.error ?? 'Failed to reset password' })
         return
       }
+      // A used token is no longer valid; kept cached, going back would show its form again.
+      queryClient.removeQueries({ queryKey: queryKeys.resetToken(token) })
       navigate('/login', { replace: true })
     } catch {
       setError('root', { message: 'Network error. Please try again.' })

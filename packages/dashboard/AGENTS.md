@@ -135,22 +135,26 @@ it cheap, which is why suppressions are held to one kind of case.
 When it fires, ask what the state *is*, then use the answer:
 
 - **Derived from props or other state?** Compute it during render. `usePerfMode` is an example: visible
-  means perf mode and not hidden by the shortcut. So is AndroidViewer's frame "ahead of *this*
-  description", which stops being true once the description changes, with no effect to clear it.
+  means perf mode and not hidden by the shortcut.
 - **Reset when a prop changes?** Adjust it during render against the previous value, as
-  `useDeviceReboot` does for `pending`. Or put the state in a child that unmounts, as `DeepLinkDialog`
-  does with its field inside the dialog's content.
+  `useDeviceReboot` does for `pending`, `useNetworkControl` for a new session and AndroidViewer for a
+  frame the description has moved past. Keep a ref's half of the reset in an effect, since refs cannot
+  be written during render. Or put the state in a child that unmounts, as `DeepLinkDialog` does with its
+  field inside the dialog's content. **Do not key a reset on a value that can come back.** AndroidViewer
+  first stored "ahead of *this* description", and a description that went A → B → A was ahead again
+  with no new frame behind it.
 - **Read from outside React?** Use `useSyncExternalStore` (`useIsMobile`), or read it once as the initial
   state (`SimulatorInfoCard`'s dismissal).
 - **Server data?** Read it with Query (below). The rule does not flag `setState` inside `.then()`, so
   a fetch in an effect passes the lint and still breaks that section.
 
 **A suppression is for syncing with a timer or an external system, and it carries its reason on the
-line.** There are three. `useFlowingNow` catches the clock up on resume: deferring that to a 0 ms timer
-would quiet the rule and draw a frame of the old window (#751). `useNetworkControl` has two resets that
-move state and refs together, in an order its readiness effect depends on, in step with the relay's
-device lifecycle. Refs cannot be written during render, so splitting either reset across two phases
-would break that order.
+line.** There are two. `useFlowingNow` catches the clock up on resume: `Date.now()` cannot be read in
+render, and deferring it to a 0 ms timer would draw a frame of the old window (#751).
+`useNetworkControl`'s readiness effect sets a position that depends on `everReady`, a ref the same
+effect raises, so the two cannot be split between render and effect. Its session reset was suppressed
+too at first, with a reason that turned out to be false. Nothing later read the state it reset, so it
+moved to render.
 
 ### Server data is read with TanStack Query, not fetched in an effect
 
