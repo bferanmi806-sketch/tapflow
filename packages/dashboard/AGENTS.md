@@ -127,13 +127,30 @@ So the cost of a suppression is real, local and narrow: it is the function it si
 names, and it is silent, because a skipped function still works. Removing one is how the two viewers
 went from 0 to 1 each.
 
-`react-hooks/set-state-in-effect` is `'off'` in `eslint.config.mjs` and hides **15 violations across
-13 files**. It *is* one of the compiler's own diagnostics — it is simply not one of the two names
-above, so suppressing or disabling it costs no compilation. Worth knowing for a different reason:
-`eslint-plugin-react-hooks@7`'s recommended set is 16 rules, this is the only one turned off, and a
-clean lint here therefore means "every enabled diagnostic passes" rather than "the Rules of React
-hold". It is a real cleanup with nothing scheduling it; the number is recorded here so the next
-person does not have to re-measure it.
+`react-hooks/set-state-in-effect` is **on**, like the other 15 rules of `eslint-plugin-react-hooks@7`'s
+recommended set. It was off over 15 violations until #845 cleared them. It is one of the compiler's own
+diagnostics but not one of the two names above, so a suppression of it costs no compilation. That makes
+it cheap, which is why suppressions are held to one kind of case.
+
+When it fires, ask what the state *is*, then use the answer:
+
+- **Derived from props or other state?** Compute it during render. `usePerfMode` is an example: visible
+  means perf mode and not hidden by the shortcut. So is AndroidViewer's frame "ahead of *this*
+  description", which stops being true once the description changes, with no effect to clear it.
+- **Reset when a prop changes?** Adjust it during render against the previous value, as
+  `useDeviceReboot` does for `pending`. Or put the state in a child that unmounts, as `DeepLinkDialog`
+  does with its field inside the dialog's content.
+- **Read from outside React?** Use `useSyncExternalStore` (`useIsMobile`), or read it once as the initial
+  state (`SimulatorInfoCard`'s dismissal).
+- **Server data?** Read it with Query (below). The rule does not flag `setState` inside `.then()`, so
+  a fetch in an effect passes the lint and still breaks that section.
+
+**A suppression is for syncing with a timer or an external system, and it carries its reason on the
+line.** There are three. `useFlowingNow` catches the clock up on resume: deferring that to a 0 ms timer
+would quiet the rule and draw a frame of the old window (#751). `useNetworkControl` has two resets that
+move state and refs together, in an order its readiness effect depends on, in step with the relay's
+device lifecycle. Refs cannot be written during render, so splitting either reset across two phases
+would break that order.
 
 ### Server data is read with TanStack Query, not fetched in an effect
 
@@ -166,16 +183,22 @@ So: `useQuery` for reads, `useMutation` with an optimistic write for actions on 
 - Defaults live in `lib/queryClient.ts` (`retry: 0`, `refetchOnWindowFocus: true`) with the reason
   for each.
 
-Nine pages still fetch in an effect. They move one at a time; **the check that would fail on a new
-one belongs at the end of that, not now** — written today its allowlist would hold those nine, and
-an allowlist that long is a to-do list rather than a guard.
+Every page reads through Query now (#845), and so do `useAuth`, the sidebar and the recordings list.
+Keys live in `queryKeys` in `lib/queries.ts`, so a mutation invalidates the key a page reads rather than
+a spelling of it. Where a list can fail, `ListStateRow` shows loading, the failure with a retry, or empty.
+It never shows the failure as "none yet".
+
+**Nothing checks for a new fetch in an effect yet.** `set-state-in-effect` does not flag `setState`
+inside `.then()`. A text scan was tried while the pages moved, and it matched fetches in event handlers
+that happen to sit inside an effect: 3 of 14 hits were handlers. A check that holds would need the
+syntax tree, not a pattern.
 
 ## Testing
 
 - `pnpm test` is always run foreground (terminal). **Never run vitest as a background process** — worker forks accumulate as zombies and exhaust CPU/RAM.
 - If a test appears to hang, Ctrl+C immediately and diagnose. Do not re-run without fixing the root cause.
-- Components that combine multiple `useEffect` + `react-hook-form` `Controller` + `useWatch` (e.g. `DefaultSettings`) can hang in jsdom under full render. `vitest.config.ts` has `testTimeout: 10000` as a safety net — a timeout failure means the test setup needs fixing, not more retries.
-- When mocking `fetch` in a component that fires multiple concurrent `useEffect` fetches (e.g. `GET /api/v1/settings` + `GET /api/v1/apps`), use URL-based dispatch (`mockImplementation((url) => {...})`) instead of `mockResolvedValueOnce` chains — call order is non-deterministic.
+- Components that combine several queries + `react-hook-form` `Controller` + `useWatch` (e.g. `DefaultSettings`) can hang in jsdom under full render. `vitest.config.ts` has `testTimeout: 10000` as a safety net — a timeout failure means the test setup needs fixing, not more retries.
+- When mocking `fetch` in a component that makes several concurrent requests (e.g. `GET /api/v1/settings` + `GET /api/v1/apps`), use URL-based dispatch (`mockImplementation((url) => {...})`) instead of `mockResolvedValueOnce` chains — call order is non-deterministic.
 
 ### Every browser-inbound message has a declared disposition
 
