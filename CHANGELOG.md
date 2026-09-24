@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Android screenshots of photo-heavy screens no longer fail with "stdout maxBuffer length exceeded"** ([#842](https://github.com/jo-duchan/tapflow/issues/842)). The agent captured them through Node's `execFile`, whose stdout buffer is 1 MiB unless set, so a 1080×2424 PNG with photos in it was rejected before it left the Mac while a flatter screen of the same size went through. `adb` output may now be 64 MiB, for the screenshot and for the `uiautomator dump` behind the accessibility tree.
+
 - **The comment panel says when its comments could not be loaded** ([#845](https://github.com/jo-duchan/tapflow/issues/845)), instead of "No comments yet". It was the one list the move to a shared query cache missed.
 
 - **Dashboard lists say when they could not be loaded** ([#845](https://github.com/jo-duchan/tapflow/issues/845)). Tokens and Team settings took a failed response for their rows and broke. Recordings showed a failure as "No recordings yet", and Tokens showed "No tokens yet" while still loading. Each list now says it is loading, says it failed and offers to try again, or says it is empty. Saving the workspace name or logo updates the sidebar without a reload. Signing out clears what the dashboard had cached, so the next person to sign in on that browser never sees the last one's user, apps or tokens. An invite or password-reset link with no token shows as expired at once, not after a blank screen.
