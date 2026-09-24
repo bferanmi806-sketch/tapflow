@@ -54,7 +54,7 @@
     "@tapflowio/agent-core": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.20.2",
+    "@types/node": "^22.20.4",
     "typescript": "^5.0.0",
     "vitest": "^4.1.11"
   }
