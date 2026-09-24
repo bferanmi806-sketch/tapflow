@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys, verifyInvitation } from '@/lib/queries'
 import { useForm, useWatch, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -27,8 +29,6 @@ export function Invite() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') ?? ''
-  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid'>('loading')
-  const [inviteRole, setInviteRole] = useState('')
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const avatarRef = useRef<HTMLInputElement>(null)
 
@@ -38,13 +38,17 @@ export function Invite() {
   })
   const displayName = useWatch({ control, name: 'displayName' }) ?? ''
 
-  useEffect(() => {
-    if (!token) { setStatus('invalid'); return }
-    fetch(`/api/v1/invitations/verify?token=${token}`)
-      .then((r) => r.ok ? r.json() : Promise.reject())
-      .then((data: { role: string }) => { setInviteRole(data.role); setStatus('valid') })
-      .catch(() => setStatus('invalid'))
-  }, [token])
+  // Derived rather than set from an effect: with no token the page is invalid on its first render,
+  // not after a blank one. Checked once per visit — refetched on focus, a token accepted in another
+  // tab would take this form away mid-way.
+  const verify = useQuery({
+    queryKey: queryKeys.inviteToken(token),
+    queryFn: () => verifyInvitation(token),
+    enabled: token !== '',
+    staleTime: Infinity,
+  })
+  const status = !token || verify.isError ? 'invalid' : verify.isPending ? 'loading' : 'valid'
+  const inviteRole = verify.data?.role ?? ''
 
   async function onSubmit(data: FormData) {
     try {

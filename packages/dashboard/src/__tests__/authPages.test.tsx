@@ -2,9 +2,10 @@
 // TanStack Query (#845). Every case here must hold on both sides of that move, so the harness wraps
 // each page in a QueryClientProvider even while nothing reads from it.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 
 vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light' }) }))
@@ -13,6 +14,7 @@ import { Login } from '@/src/pages/Login'
 import { Setup } from '@/src/pages/Setup'
 import { Invite } from '@/src/pages/Invite'
 import { ResetPassword } from '@/src/pages/ResetPassword'
+import { useAuth } from '@/hooks/useAuth'
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 /** Past the answer's handling, so "did not redirect" means never, not "not yet". */
@@ -134,5 +136,129 @@ describe('ResetPassword', () => {
     fetchMock.mockRejectedValue(new TypeError('network down'))
     renderAt('/reset-password?token=abc', '/reset-password', <ResetPassword />)
     expect(await screen.findByText('Link expired')).toBeInTheDocument()
+  })
+})
+
+// ── What the move to Query changed (#845) ─────────────────────────────────────────────────────────
+
+describe('after the move to Query', () => {
+  it('shows an invite without a token as invalid on its first render, not after a blank one', () => {
+    renderAt('/invite', '/invite', <Invite />)
+    expect(screen.getByText('Invitation expired')).toBeInTheDocument()
+  })
+
+  it('shows a reset link without a token as invalid on its first render', () => {
+    renderAt('/reset-password', '/reset-password', <ResetPassword />)
+    expect(screen.getByText('Link expired')).toBeInTheDocument()
+  })
+
+  it('does not check the invitation again when the window regains focus', async () => {
+    // Refetched on focus, a token accepted in another tab would take this form away mid-way.
+    fetchMock.mockResolvedValue(json({ role: 'member' }))
+    renderAt('/invite?token=abc', '/invite', <Invite />)
+    await screen.findByText('Set up your account')
+    await act(async () => { focusManager.setFocused(false); focusManager.setFocused(true) })
+    await settle()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    focusManager.setFocused(undefined)
+  })
+
+  it('does not send a freshly created admin from Login back to Setup', async () => {
+    // Both pages read one cached status. Setup must record that it is now initialised, or Login
+    // reads the stale "not yet" and bounces the new admin straight back.
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/v1/auth/status') return json({ initialized: false })
+      if (String(input) === '/api/v1/auth/init') return json({ ok: true })
+      return json({}, 404)
+    })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: 0 } } })
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/setup']}>
+          <Routes>
+            <Route path="/setup" element={<Setup />} />
+            <Route path="/login" element={<Login />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await userEvent.type(await screen.findByLabelText(/admin email/i), 'admin@example.com')
+    await userEvent.type(screen.getByLabelText(/^password$/i), 'password123')
+    await userEvent.type(screen.getByLabelText(/confirm password/i), 'password123')
+    await userEvent.click(screen.getByRole('button', { name: /create/i }))
+
+    expect(await screen.findByText('Welcome back')).toBeInTheDocument()
+    await settle()
+    expect(screen.getByText('Welcome back')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/admin email/i)).toBeNull()
+  })
+
+  it('asks for the signed-in user once however many places read it', async () => {
+    fetchMock.mockResolvedValue(json({ id: 1, email: 'a@b.c', displayName: null, avatarUrl: null, role: 'Admin' }))
+    function Reader({ label }: { label: string }) {
+      const { user } = useAuth()
+      return <p>{label}:{user?.role ?? '…'}</p>
+    }
+    const client = new QueryClient({ defaultOptions: { queries: { retry: 0 } } })
+    render(
+      <QueryClientProvider client={client}>
+        <Reader label="layout" /><Reader label="sidebar" /><Reader label="settings" />
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText('settings:Admin')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.filter((c: unknown[]) => String(c[0]).endsWith('/api/v1/auth/me'))).toHaveLength(1)
+  })
+})
+
+describe('signing in after the session ran out', () => {
+  it('lands on the dashboard, not back on Login, when the cached user said "nobody"', async () => {
+    // The layout redirects when `useAuth` has no user. Once that answer is cached, a successful
+    // sign-in must not be judged by it.
+    let signedIn = false
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/v1/auth/status') return json({ initialized: true })
+      if (url.endsWith('/api/v1/auth/login')) { signedIn = true; return json({ ok: true }) }
+      if (url.endsWith('/api/v1/auth/me')) {
+        return signedIn ? json({ id: 1, email: 'a@b.c', displayName: null, avatarUrl: null, role: 'Admin' }) : json({ error: 'no session' }, 401)
+      }
+      return json({}, 404)
+    })
+    // As DashboardLayout does: one render with no user is enough to bounce.
+    function Guarded() {
+      const { user, loading } = useAuth()
+      if (loading) return null
+      return user ? <p>dashboard for {user.role}</p> : <><p>redirected to login</p><Navigate to="/login" replace /></>
+    }
+    const client = new QueryClient({ defaultOptions: { queries: { retry: 0 } } })
+    const { unmount } = render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/app-center']}>
+          <Routes>
+            <Route path="/app-center" element={<Guarded />} />
+            <Route path="/login" element={<p>login</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await screen.findByText('login')
+    unmount()
+
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/login']}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/app-center" element={<Guarded />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await userEvent.type(await screen.findByLabelText('Email'), 'admin@example.com')
+    await userEvent.type(screen.getByLabelText('Password'), 'password123')
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+
+    expect(await screen.findByText('dashboard for Admin')).toBeInTheDocument()
+    expect(screen.queryByText('redirected to login')).toBeNull()
   })
 })

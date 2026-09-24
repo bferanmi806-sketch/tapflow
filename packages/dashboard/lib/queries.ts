@@ -1,4 +1,49 @@
 import type { App, Build, ReleaseGroup } from '@/lib/types'
+import { api } from '@/lib/api'
+import type { AuthUser } from '@/hooks/useAuth'
+
+/**
+ * Every query key the dashboard reads through TanStack Query, in one place so a mutation invalidates
+ * the key a page actually reads rather than a spelling of it (#845). App Center's builds keep their
+ * own composite key beside the page, which is the only reader.
+ */
+export const queryKeys = {
+  authStatus: ['auth', 'status'] as const,
+  me: ['auth', 'me'] as const,
+  inviteToken: (token: string) => ['invitations', 'verify', token] as const,
+  resetToken: (token: string) => ['auth', 'reset-password', token] as const,
+  apps: ['apps'] as const,
+  settings: ['settings'] as const,
+  tokens: ['tokens'] as const,
+  teamMembers: ['team', 'members'] as const,
+}
+
+/** Whether the relay has an admin yet. Throws when it cannot be asked — a failure is not "no". */
+export async function getAuthStatus(): Promise<{ initialized: boolean }> {
+  const res = await fetch('/api/v1/auth/status')
+  if (!res.ok) throw new Error(`GET /api/v1/auth/status failed with ${res.status}`)
+  return res.json() as Promise<{ initialized: boolean }>
+}
+
+/** The signed-in user, or `null` when the relay says there is none (401, or no body). */
+export async function getMe(): Promise<AuthUser | null> {
+  const { data, status } = await api.get<AuthUser>('/api/v1/auth/me')
+  return status === 401 || !data ? null : data
+}
+
+/** The role an invitation grants. Throws for a token the relay refuses. */
+export async function verifyInvitation(token: string): Promise<{ role: string }> {
+  const res = await fetch(`/api/v1/invitations/verify?token=${token}`)
+  if (!res.ok) throw new Error(`invitation refused with ${res.status}`)
+  return res.json() as Promise<{ role: string }>
+}
+
+/** Resolves when a password-reset token is still good. Throws for one the relay refuses. */
+export async function verifyResetToken(token: string): Promise<true> {
+  const res = await fetch(`/api/v1/auth/reset-password/verify?token=${token}`)
+  if (!res.ok) throw new Error(`reset token refused with ${res.status}`)
+  return true
+}
 
 export async function getApps(): Promise<App[]> {
   const res = await fetch('/api/v1/apps', { credentials: 'include' })

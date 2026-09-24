@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getAuthStatus, queryKeys } from '@/lib/queries'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -29,12 +30,9 @@ export function Setup() {
     resolver: zodResolver(schema),
   })
 
-  useEffect(() => {
-    fetch('/api/v1/auth/status')
-      .then((r) => r.json() as Promise<{ initialized: boolean }>)
-      .then(({ initialized }) => { if (initialized) navigate('/login', { replace: true }) })
-      .catch(() => {})
-  }, [navigate])
+  // Once per visit, as on Login, and shared with it: the key is the same.
+  const queryClient = useQueryClient()
+  const status = useQuery({ queryKey: queryKeys.authStatus, queryFn: getAuthStatus, staleTime: Infinity })
 
   async function onSubmit(data: FormData) {
     try {
@@ -48,11 +46,16 @@ export function Setup() {
         setError('root', { message: body.error ?? 'Failed to create account' })
         return
       }
+      // The cached answer said "not initialized", and nothing refetches it: without this, Login would
+      // read it and send the new admin straight back here.
+      queryClient.setQueryData(queryKeys.authStatus, { initialized: true })
       navigate('/login', { replace: true })
     } catch {
       setError('root', { message: 'Network error. Please try again.' })
     }
   }
+
+  if (status.data?.initialized) return <Navigate to="/login" replace />
 
   return (
     <div className="flex min-h-svh items-center justify-center overflow-hidden p-4">

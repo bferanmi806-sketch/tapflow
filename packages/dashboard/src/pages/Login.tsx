@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getAuthStatus, queryKeys } from '@/lib/queries'
 import { useTheme } from 'next-themes'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -22,12 +23,10 @@ export function Login() {
   const { resolvedTheme } = useTheme()
   const defaultLogo = resolvedTheme === 'dark' ? '/logo-dark.svg' : '/logo.svg'
 
-  useEffect(() => {
-    fetch('/api/v1/auth/status')
-      .then((r) => r.json() as Promise<{ initialized: boolean }>)
-      .then(({ initialized }) => { if (!initialized) navigate('/setup', { replace: true }) })
-      .catch(() => {})
-  }, [navigate])
+  // Asked once per visit (`staleTime: Infinity`): refetched on focus, a check that failed while
+  // someone typed would take the form away mid-sentence. A failure keeps the form, as before.
+  const status = useQuery({ queryKey: queryKeys.authStatus, queryFn: getAuthStatus, staleTime: Infinity })
+  const queryClient = useQueryClient()
 
   const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -37,11 +36,16 @@ export function Login() {
     try {
       const { status } = await api.post('/api/v1/auth/login', { email: data.email, password: data.password })
       if (status !== 200) { setError('root', { message: 'Invalid email or password' }); return }
+      // The cached user may be the "nobody" that sent this person here. Left in place, the layout
+      // would read it on arrival and send them straight back to sign in again.
+      queryClient.removeQueries({ queryKey: queryKeys.me })
       navigate('/app-center', { replace: true })
     } catch {
       setError('root', { message: 'Network error. Please try again.' })
     }
   }
+
+  if (status.data?.initialized === false) return <Navigate to="/setup" replace />
 
   return (
     <div className="flex min-h-svh items-center justify-center overflow-hidden p-4">
