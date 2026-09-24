@@ -211,11 +211,15 @@ describe('SimulatorNetwork', () => {
     }
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     // **Restored here, not per test.** The deadline cases below use fake timers, and a leak turns
     // every `vi.waitFor` in the liveness suite into a five-second timeout — measured: six of them.
     for (const n of made) n.dispose()
     vi.useRealTimers()
+    // Work already running when a test ends still writes here — a host run spawned by a liveness
+    // check writes its scratch files and rule — and removing the directory under it failed as
+    // ENOTEMPTY (#826).
+    await Promise.all(made.map((n) => n.idle()))
     rmSync(dir, { recursive: true, force: true })
   })
 
@@ -1933,6 +1937,47 @@ describe('SimulatorNetwork', () => {
 
       staleState([UDID], -10)
       await vi.waitFor(() => expect(lost).toEqual([UDID]))
+    })
+
+    /** A check queued behind a confirmation that is still waiting, which is what a toggle during a
+     *  provider restart looks like. The file is stale, so the check has something to report. */
+    const queueCheckBehindRefusal = async () => {
+      armed()
+      const net = make(undefined, 300)
+      await net.setOffline(UDID, true)
+      writeFileSync(join(dir, 'NO_CONFIRM'), '')
+      writeFileSync(join(dir, 'NO_STATE'), '')
+      staleState([UDID], -60)
+      const pending = net.setOffline(UDID, false)
+      // Several liveness intervals, so a check is waiting behind the confirmation.
+      await new Promise((r) => setTimeout(r, 100))
+      return { net, pending }
+    }
+
+    it('does not act on a check that was queued before a disconnect', async () => {
+      // `IOSAgent.disconnect` disposes while a toggle can still be waiting on its confirmation. The
+      // check queued behind it used to run anyway, and in this suite it wrote into a directory
+      // teardown was removing (#826).
+      const { net, pending } = await queueCheckBehindRefusal()
+      net.dispose()
+      await pending
+      // After the toggle's own writes, which go through whatever the dispose did.
+      const runs = argv()
+      await net.idle()
+
+      expect(argv()).toEqual(runs)
+      expect(lost).toEqual([])
+    })
+
+    it('acts on that same queued check when nothing disconnected', async () => {
+      // The twin of the case above, so its silence is the dispose and not a check that never ran.
+      const { net, pending } = await queueCheckBehindRefusal()
+      await pending
+      const runs = argv()
+      await net.idle()
+
+      expect(argv()).toEqual([...runs, `--remove ${UDID}`])
+      expect(lost).toEqual([UDID])
     })
 
     it('stops watching once nothing is offline', async () => {
