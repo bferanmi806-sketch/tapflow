@@ -16,6 +16,8 @@ export const queryKeys = {
   settings: ['settings'] as const,
   tokens: ['tokens'] as const,
   teamMembers: ['team', 'members'] as const,
+  /** Every build's recordings — what an upload invalidates, since it may be for any build on screen. */
+  allRecordings: ['recordings'] as const,
   recordings: (buildId: number) => ['recordings', buildId] as const,
   agents: ['agents'] as const,
   resourceHistory: (agent: string, range: string) => ['agents', agent, 'resources', range] as const,

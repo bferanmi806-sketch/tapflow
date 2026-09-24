@@ -64,6 +64,38 @@ describe('DeepLinkDialog', () => {
     view.rerender(<DeepLinkDialog open {...props} />)
     expect((screen.getByLabelText('Deeplink URL') as HTMLInputElement).value).toBe('')
   })
+
+  it('opens empty even when reopened while the close animation is still running', async () => {
+    // Radix keeps the content mounted until its exit animation ends. jsdom runs no animations, so the
+    // animation is reported through getComputedStyle, which is what Radix's Presence reads; it then
+    // waits for an animationend that never comes, and the closed content stays mounted.
+    const real = window.getComputedStyle.bind(window)
+    const spy = vi.spyOn(window, 'getComputedStyle').mockImplementation((el, pseudo) => {
+      const style = real(el, pseudo)
+      // Presence keeps the object it got at mount and reads it again on close — live in a browser, so
+      // this answers from the element's state at the moment it is read. A name different from the one
+      // it had while open is what counts as animating out.
+      if (!(el instanceof HTMLElement) || el.getAttribute('role') !== 'dialog') return style
+      return new Proxy(style, {
+        get: (target, prop) => {
+          if (prop === 'animationName') return el.dataset.state === 'closed' ? 'exit' : 'enter'
+          const value = Reflect.get(target, prop)
+          return typeof value === 'function' ? value.bind(target) : value
+        },
+      })
+    })
+    try {
+      const props = { onOpenChange: vi.fn(), openUrl: vi.fn() }
+      const view = render(<DeepLinkDialog open {...props} />)
+      await userEvent.type(screen.getByLabelText('Deeplink URL'), 'myapp://half')
+      view.rerender(<DeepLinkDialog open={false} {...props} />)
+      expect(screen.queryByLabelText('Deeplink URL'), 'the exit animation should keep it mounted').not.toBeNull()
+      view.rerender(<DeepLinkDialog open {...props} />)
+      expect((screen.getByLabelText('Deeplink URL') as HTMLInputElement).value).toBe('')
+    } finally {
+      spy.mockRestore()
+    }
+  })
 })
 
 describe('SimulatorInfoCard — the Standard-mode notice', () => {

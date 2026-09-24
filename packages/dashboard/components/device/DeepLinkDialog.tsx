@@ -14,6 +14,16 @@ interface Props {
 }
 
 export function DeepLinkDialog({ open, onOpenChange, openUrl }: Props) {
+  // Counted per opening and used as the form's key, so each opening starts empty. Unmounting on close
+  // alone was not enough: Radix keeps the content mounted through its exit animation, and a dialog
+  // reopened in that window kept what was typed. Adjusted while rendering, not from an effect.
+  const [opening, setOpening] = useState(0);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (open) setOpening((n) => n + 1);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -21,15 +31,15 @@ export function DeepLinkDialog({ open, onOpenChange, openUrl }: Props) {
         aria-describedby={undefined}
       >
         <DialogTitle className="sr-only">Open Deeplink</DialogTitle>
-        <DeepLinkForm openUrl={openUrl} close={() => onOpenChange(false)} />
+        <DeepLinkForm key={opening} openUrl={openUrl} close={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
 }
 
 /**
- * The field lives inside the dialog's content, which Radix unmounts on close — so each opening starts
- * empty without an effect clearing it (the effect ran a render late, and is what the rule flagged).
+ * The field lives in its own component, keyed per opening above — so each opening starts empty without
+ * an effect clearing it (the effect ran a render late, and is what the rule flagged).
  */
 function DeepLinkForm({ openUrl, close }: { openUrl: (url: string) => void; close: () => void }) {
   const [url, setUrl] = useState('');

@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queries';
 import { toast } from 'sonner';
 import type { SessionTerminatedReason } from '@tapflowio/protocol';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -95,7 +96,7 @@ export function QASession() {
     : '';
 
   // The list under the viewer reads the recordings query; an upload makes it stale.
-  const handleRecordingUploaded = useCallback(() => { void queryClient.invalidateQueries({ queryKey: ['recordings'] }); }, [queryClient]);
+  const handleRecordingUploaded = useCallback(() => { void queryClient.invalidateQueries({ queryKey: queryKeys.allRecordings }); }, [queryClient]);
 
   // Full reset is a one-shot instruction, not a setting. Snapshot it for this launch and turn the
   // toggle off in the same click: the value has to survive because `device:boot` is only sent later,
