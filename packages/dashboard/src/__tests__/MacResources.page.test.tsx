@@ -3,6 +3,7 @@ import { render, screen, act, fireEvent } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { BreadcrumbProvider } from '@/hooks/useBreadcrumb'
 import { MacResources } from '@/src/pages/MacResources'
+import { withQuery } from './withQuery'
 import { HISTORY_POLL_MS, flowIntervalMs, type Range } from '@/lib/resource-chart'
 import type { AgentResources, BrowserInbound, SessionInfo } from '@/lib/types'
 
@@ -83,7 +84,7 @@ afterEach(() => {
 const advance = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms) })
 const flush = () => advance(0)
 async function mount() {
-  const utils = render(<BreadcrumbProvider><MacResources /></BreadcrumbProvider>)
+  const utils = render(withQuery(<BreadcrumbProvider><MacResources /></BreadcrumbProvider>))
   await flush()
   await flush()
   return utils

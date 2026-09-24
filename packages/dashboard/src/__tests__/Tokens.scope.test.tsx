@@ -4,15 +4,16 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { toast } from 'sonner'
 import { TokenSettings } from '@/src/pages/settings/Tokens'
+import { withQuery } from './withQuery'
 import { resetTeammateBasesForTests } from '@/lib/publicLink'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 function renderTokens() {
-  return render(
+  return render(withQuery(
     <MemoryRouter>
       <TokenSettings />
-    </MemoryRouter>,
+    </MemoryRouter>),
   )
 }
 

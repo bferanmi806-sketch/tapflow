@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from 'sonner'
 import { TeamSettings } from '@/src/pages/settings/Team'
+import { withQuery } from './withQuery'
 import { resetTeammateBasesForTests } from '@/lib/publicLink'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }))
@@ -29,7 +30,7 @@ function stubClipboard(writeText: ((text: string) => Promise<void>) | undefined)
 }
 
 async function sendInvite() {
-  render(<TeamSettings />)
+  render(withQuery(<TeamSettings />))
   await userEvent.click(await screen.findByRole('button', { name: /invite member/i }))
   await userEvent.type(screen.getByLabelText(/email/i), 'qa@test.local')
   await userEvent.click(screen.getByRole('button', { name: /generate invite link/i }))
@@ -49,7 +50,7 @@ describe('Team — the invite link a teammate gets', () => {
     // `mode: 'onBlur'` that drew `Enter a valid email`, and the inserted line moved what was below
     // it, so the press that should have dismissed the dialog landed on nothing and it took a second.
     stubFetch({ token: 't', emailSent: false, inviteUrl: null })
-    render(<TeamSettings />)
+    render(withQuery(<TeamSettings />))
     await userEvent.click(await screen.findByRole('button', { name: /invite member/i }))
     const email = screen.getByLabelText(/email/i)
     expect(email).toHaveFocus()

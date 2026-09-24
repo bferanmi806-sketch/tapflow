@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { withQuery } from './withQuery'
 
 // next-themes 모킹
 vi.mock('next-themes', () => ({
@@ -11,13 +12,13 @@ vi.mock('next-themes', () => ({
 import { Setup } from '@/src/pages/Setup'
 
 function renderSetup(initialPath = '/setup') {
-  return render(
+  return render(withQuery(
     <MemoryRouter initialEntries={[initialPath]}>
       <Routes>
         <Route path="/setup" element={<Setup />} />
         <Route path="/login" element={<div>login page</div>} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>),
   )
 }
 
