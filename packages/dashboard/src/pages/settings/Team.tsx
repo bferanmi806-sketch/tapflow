@@ -24,8 +24,14 @@ import {
 import { UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { joinPath, loadTeammateBases } from '@/lib/publicLink'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getTeamMembers, queryKeys } from '@/lib/queries'
+import { ListStateRow } from '@/components/ListStateRow'
+import { listView } from '@/lib/list-view'
+import { useFocusAfterSwap } from '@/hooks/useFocusAfterSwap'
+import type { TeamMember } from '@/lib/types'
 
-type Member = { id: number; email: string; display_name: string; role: string; joined_at: string }
+type Member = TeamMember
 
 const inviteSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -40,7 +46,12 @@ const inviteResponseSchema = z.object({
 })
 
 export function TeamSettings() {
-  const [members, setMembers] = useState<Member[]>([])
+  const queryClient = useQueryClient()
+  const membersQuery = useQuery({ queryKey: queryKeys.teamMembers, queryFn: getTeamMembers })
+  const members: Member[] = membersQuery.data ?? []
+  const view = listView(membersQuery)
+  const inviteButtonRef = useRef<HTMLButtonElement>(null)
+  const listRegion = useFocusAfterSwap<HTMLTableSectionElement>(view, inviteButtonRef)
   const [resetSent, setResetSent] = useState<Record<number, string>>({})
   const [inviteLink, setInviteLink] = useState('')
   const [linkCopied, setLinkCopied] = useState(false)
@@ -55,11 +66,7 @@ export function TeamSettings() {
     defaultValues: { email: '', role: 'QA' },
   })
 
-  function load() {
-    fetch('/api/v1/team/members', { credentials: 'include' }).then((r) => r.json()).then(setMembers)
-  }
-
-  useEffect(() => { load() }, [])
+  const load = () => { void queryClient.invalidateQueries({ queryKey: queryKeys.teamMembers }) }
 
   // The form and the button that had focus are replaced by the link. Focus goes to the link, where it can be
   // selected and copied by hand — the only way on a plain-HTTP page, which has no clipboard API.
@@ -155,7 +162,7 @@ export function TeamSettings() {
         <h1 className="text-xl font-semibold">Team</h1>
         <Dialog open={inviteOpen} onOpenChange={handleDialogClose}>
           <DialogTrigger asChild>
-            <Button size="sm"><UserPlus className="mr-2 h-4 w-4" />Invite member</Button>
+            <Button ref={inviteButtonRef} size="sm"><UserPlus className="mr-2 h-4 w-4" />Invite member</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader><DialogTitle>Invite team member</DialogTitle></DialogHeader>
@@ -209,7 +216,7 @@ export function TeamSettings() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Members ({members.length})</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Members{membersQuery.data ? ` (${members.length})` : ''}</CardTitle></CardHeader>
         <CardContent className="px-4 pt-0 pb-2">
           <Table>
             <TableHeader>
@@ -221,7 +228,15 @@ export function TeamSettings() {
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody {...listRegion}>
+              <ListStateRow
+                view={view}
+                colSpan={5}
+                noun="team members"
+                emptyText="No members yet."
+                onRetry={() => { void membersQuery.refetch() }}
+                retrying={membersQuery.isFetching}
+              />
               {members.map((m) => (
                 <TableRow key={m.id} className="hover:bg-transparent">
                   <TableCell className="font-medium">{m.display_name || '—'}</TableCell>

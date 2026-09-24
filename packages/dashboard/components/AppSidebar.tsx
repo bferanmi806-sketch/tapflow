@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTheme } from 'next-themes'
 import { LayoutGrid, LogOut, Settings, Users, KeyRound, Monitor, BookOpen } from 'lucide-react'
@@ -22,6 +21,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/useAuth'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getSettings, queryKeys } from '@/lib/queries'
 import { UserAvatar } from '@/components/UserAvatar'
 
 const navItems = [
@@ -46,20 +47,17 @@ export function AppSidebar() {
   const isAdmin = user?.role === 'Admin'
   const { resolvedTheme } = useTheme()
   const defaultLogo = resolvedTheme === 'dark' ? '/logo-dark.svg' : '/logo.svg'
-  const [logoUrl, setLogoUrl] = useState<string | null>(null)
-  const [teamName, setTeamName] = useState('tapflow')
-
-  useEffect(() => {
-    fetch('/api/v1/settings', { credentials: 'include' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => {
-        if (d?.logo_url) setLogoUrl(d.logo_url)
-        if (d?.team_name) setTeamName(d.team_name)
-      })
-  }, [])
+  // The same query Default settings reads, so a saved workspace shows here without a reload.
+  const settings = useQuery({ queryKey: queryKeys.settings, queryFn: getSettings }).data
+  const logoUrl = settings?.logo_url ?? null
+  const teamName = settings?.team_name || 'tapflow'
+  const queryClient = useQueryClient()
 
   async function handleLogout() {
     await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' })
+    // Everything cached belongs to the person leaving: left in place, the next one to sign in would
+    // see it — their user, apps and tokens — until each refetch landed.
+    queryClient.clear()
     navigate('/login', { replace: true })
   }
 

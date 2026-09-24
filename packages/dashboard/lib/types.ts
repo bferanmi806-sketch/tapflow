@@ -73,3 +73,28 @@ export interface ReleaseGroup {
   builds: Build[]
 }
 
+
+/** A row of `GET /api/v1/tokens`. */
+export interface ApiToken {
+  id: number
+  name: string
+  scope: string
+  last_used_at: string | null
+  expires_at: string | null
+  created_at: string
+}
+
+/** A row of `GET /api/v1/team/members`. */
+export interface TeamMember {
+  id: number
+  email: string
+  display_name: string
+  role: string
+  joined_at: string
+}
+
+/** `GET /api/v1/settings`: the workspace the sidebar and settings both show. */
+export interface WorkspaceSettings {
+  team_name: string
+  logo_url: string | null
+}

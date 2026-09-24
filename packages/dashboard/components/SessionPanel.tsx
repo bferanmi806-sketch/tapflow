@@ -5,10 +5,9 @@ import { RecordingsList } from '@/components/RecordingsList'
 
 interface Props {
   buildId: number
-  recordingsRefreshKey?: number
 }
 
-export function SessionPanel({ buildId, recordingsRefreshKey = 0 }: Props) {
+export function SessionPanel({ buildId }: Props) {
   return (
     <Tabs defaultValue="comments" className="flex h-full flex-col">
       {/* px-1 matches the comment textarea inset so tabs, list, and textarea share one width. */}
@@ -30,7 +29,7 @@ export function SessionPanel({ buildId, recordingsRefreshKey = 0 }: Props) {
       </TabsContent>
 
       <TabsContent value="recordings" className="mt-3 min-h-0 flex-1 overflow-y-auto">
-        <RecordingsList buildId={buildId} refreshKey={recordingsRefreshKey} />
+        <RecordingsList buildId={buildId} />
       </TabsContent>
     </Tabs>
   )

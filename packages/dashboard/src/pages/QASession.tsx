@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { SessionTerminatedReason } from '@tapflowio/protocol';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -70,7 +71,7 @@ export function QASession() {
   const buildId = searchParams.get('id');
 
   const { build } = useBuildLoader(buildId);
-  const [recordingsKey, setRecordingsKey] = useState(0);
+  const queryClient = useQueryClient();
 
   const os = build?.platform ?? 'ios';
   const {
@@ -93,7 +94,8 @@ export function QASession() {
     ? `${selectedDevice.name}${selectedDevice.osVersion ? ` · ${selectedDevice.osVersion}` : ''}`
     : '';
 
-  const handleRecordingUploaded = useCallback(() => setRecordingsKey((k) => k + 1), []);
+  // The list under the viewer reads the recordings query; an upload makes it stale.
+  const handleRecordingUploaded = useCallback(() => { void queryClient.invalidateQueries({ queryKey: ['recordings'] }); }, [queryClient]);
 
   // Full reset is a one-shot instruction, not a setting. Snapshot it for this launch and turn the
   // toggle off in the same click: the value has to survive because `device:boot` is only sent later,
@@ -392,7 +394,6 @@ export function QASession() {
           <div className="w-80 shrink-0 h-full">
             <SessionPanel
               buildId={Number(buildId)}
-              recordingsRefreshKey={recordingsKey}
             />
           </div>
         </>

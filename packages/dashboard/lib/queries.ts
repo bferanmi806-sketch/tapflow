@@ -1,4 +1,4 @@
-import type { App, Build, ReleaseGroup } from '@/lib/types'
+import type { ApiToken, App, Build, Recording, ReleaseGroup, TeamMember, WorkspaceSettings } from '@/lib/types'
 import { api } from '@/lib/api'
 import type { AuthUser } from '@/hooks/useAuth'
 
@@ -16,6 +16,7 @@ export const queryKeys = {
   settings: ['settings'] as const,
   tokens: ['tokens'] as const,
   teamMembers: ['team', 'members'] as const,
+  recordings: (buildId: number) => ['recordings', buildId] as const,
 }
 
 /** Whether the relay has an admin yet. Throws when it cannot be asked — a failure is not "no". */
@@ -37,6 +38,21 @@ export async function verifyInvitation(token: string): Promise<{ role: string }>
   if (!res.ok) throw new Error(`invitation refused with ${res.status}`)
   return res.json() as Promise<{ role: string }>
 }
+
+/**
+ * A GET that throws on a failed status. Every list here used to take a 500's error body as its rows —
+ * Tokens and Team then crashed on `.map` of an object — or, at best, showed a failure as "none yet".
+ */
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(path, { credentials: 'include' })
+  if (!res.ok) throw new Error(`GET ${path} failed with ${res.status}`)
+  return res.json() as Promise<T>
+}
+
+export const getSettings = () => getJson<WorkspaceSettings>('/api/v1/settings')
+export const getTokens = () => getJson<ApiToken[]>('/api/v1/tokens')
+export const getTeamMembers = () => getJson<TeamMember[]>('/api/v1/team/members')
+export const getRecordings = (buildId: number) => getJson<Recording[]>(`/api/v1/recordings?buildId=${buildId}`)
 
 /** Resolves when a password-reset token is still good. Throws for one the relay refuses. */
 export async function verifyResetToken(token: string): Promise<true> {

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { BreadcrumbProvider, useBreadcrumb } from '@/hooks/useBreadcrumb'
 import type { BrowserInbound, SessionInfo } from '@/lib/types'
+import { withQuery } from './withQuery'
 
 // The two halves of the #439 fix only meet here: the hook decides what the reset is, the viewer
 // decides how often it is sent, and QASession is the wiring between them. Both halves have their
@@ -87,11 +88,11 @@ function Harness() {
 }
 
 async function openDeviceList(user: ReturnType<typeof userEvent.setup>, agents = AGENTS) {
-  render(
+  render(withQuery(
     <MemoryRouter initialEntries={['/qa?id=7']}>
       <BreadcrumbProvider><Harness /></BreadcrumbProvider>
     </MemoryRouter>,
-  )
+  ))
   await vi.waitFor(() => expect(deliver).not.toBeNull())
   await act(async () => { deliver!({ type: 'agents:listed', sessions: agents }) })
   await user.click(await screen.findByText('studio-mac'))
