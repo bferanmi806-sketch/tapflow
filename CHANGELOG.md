@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The comment panel says when its comments could not be loaded** ([#845](https://github.com/jo-duchan/tapflow/issues/845)), instead of "No comments yet". It was the one list the move to a shared query cache missed.
+
 - **Dashboard lists say when they could not be loaded** ([#845](https://github.com/jo-duchan/tapflow/issues/845)). Tokens and Team settings took a failed response for their rows and broke. Recordings showed a failure as "No recordings yet", and Tokens showed "No tokens yet" while still loading. Each list now says it is loading, says it failed and offers to try again, or says it is empty. Saving the workspace name or logo updates the sidebar without a reload. Signing out clears what the dashboard had cached, so the next person to sign in on that browser never sees the last one's user, apps or tokens. An invite or password-reset link with no token shows as expired at once, not after a blank screen.
 
 - **Changing a build's status under a status filter no longer drops focus to the top of the App Center** ([#833](https://github.com/jo-duchan/tapflow/issues/833)). When the new status was one the filter hides, the refetch removed the row along with the control that had focus. Focus now moves to the next build in the release, or the previous one, or the neighbouring release's header, and that control says why the build disappeared. If the list empties, focus goes to the search box as before. A change the server refuses moves nothing.
