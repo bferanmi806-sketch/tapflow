@@ -1,4 +1,4 @@
-import type { ApiToken, App, Build, Recording, ReleaseGroup, ResourcePoint, TeamMember, WorkspaceSettings } from '@/lib/types'
+import type { ApiToken, App, Build, Comment, Recording, ReleaseGroup, ResourcePoint, TeamMember, WorkspaceSettings } from '@/lib/types'
 import { api } from '@/lib/api'
 import type { AuthUser } from '@/hooks/useAuth'
 
@@ -17,6 +17,7 @@ export const queryKeys = {
   tokens: ['tokens'] as const,
   teamMembers: ['team', 'members'] as const,
   /** Every build's recordings — what an upload invalidates, since it may be for any build on screen. */
+  comments: (buildId: number) => ['comments', buildId] as const,
   allRecordings: ['recordings'] as const,
   recordings: (buildId: number) => ['recordings', buildId] as const,
   agents: ['agents'] as const,
@@ -62,6 +63,7 @@ async function getJson<T>(path: string): Promise<T> {
 export const getSettings = () => getJson<WorkspaceSettings>('/api/v1/settings')
 export const getTokens = () => getJson<ApiToken[]>('/api/v1/tokens')
 export const getTeamMembers = () => getJson<TeamMember[]>('/api/v1/team/members')
+export const getComments = (buildId: number) => getJson<Comment[]>(`/api/v1/comments?build_id=${buildId}`)
 export const getRecordings = (buildId: number) => getJson<Recording[]>(`/api/v1/recordings?buildId=${buildId}`)
 export const getKnownAgents = () => getJson<string[]>('/api/v1/agents')
 

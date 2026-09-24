@@ -187,15 +187,24 @@ So: `useQuery` for reads, `useMutation` with an optimistic write for actions on 
 - Defaults live in `lib/queryClient.ts` (`retry: 0`, `refetchOnWindowFocus: true`) with the reason
   for each.
 
-Every page reads through Query now (#845), and so do `useAuth`, the sidebar and the recordings list.
+Every page reads through Query now (#845), and so do `useAuth`, the sidebar, the recordings list and
+the comment panel. The comment panel was missed in #845 and found by the review of the lint below.
 Keys live in `queryKeys` in `lib/queries.ts`, so a mutation invalidates the key a page reads rather than
 a spelling of it. Where a list can fail, `ListStateRow` shows loading, the failure with a retry, or empty.
 It never shows the failure as "none yet".
 
-**Nothing checks for a new fetch in an effect yet.** `set-state-in-effect` does not flag `setState`
-inside `.then()`. A text scan was tried while the pages moved, and it matched fetches in event handlers
-that happen to sit inside an effect: 3 of 14 hits were handlers. A check that holds would need the
-syntax tree, not a pattern.
+**A new fetch in an effect fails lint.** `set-state-in-effect` cannot catch one, because it does not
+flag `setState` inside `.then()`. So `eslint.config.mjs` flags the call itself: `fetch` or `api.*`
+inside `useEffect`/`useLayoutEffect`, including the `React.useEffect` form.
+`scripts/__tests__/dashboardNoFetchInEffect.test.mjs` plants these and checks the rule still fires.
+Two limits, both written beside the rule:
+
+- **It does not see function boundaries.** A `fetch` in an event handler that an effect registers is
+  flagged too. Today there are none. If one appears, suppress that line with the reason.
+- **It sees a call only where it is written.** A fetch inside a `useCallback` that the effect calls
+  passes. That is not a rare shape: CommentPanel's `load()` was exactly this and passed until review.
+  A helper such as `getBuild()`, `window.fetch`, or a renamed `api` import also passes. A reviewer has
+  to look for these.
 
 ## Testing
 
