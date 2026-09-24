@@ -177,7 +177,7 @@ It only applies while tapflow runs the simulator:
 - If the agent stops without shutting a simulator down, that simulator stays lean while it keeps running, whoever opens it. Once it is shut down, the next agent to connect removes the setting.
 - `tapflow boot` starts a simulator without going through the agent, so it boots it as it is.
 
-It needs an iOS 18.5 or later runtime; other runtimes, tvOS and watchOS simulators are left alone. Android emulators are not affected: the launch flags that were tried made no measurable difference. `tapflow doctor ios` shows whether Lean mode is on and how many simulators are lean right now.
+It needs an iOS 18.5 or later runtime; other runtimes, tvOS and watchOS simulators are left alone. Android emulators are not covered yet. `tapflow doctor ios` shows whether Lean mode is on and how many simulators are lean right now.
 
 In a setup with several Macs, each Mac's `tapflow.config.json` decides for the agent on that Mac.
 
