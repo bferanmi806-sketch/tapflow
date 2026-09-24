@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getComments, queryKeys } from '@/lib/queries'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -51,7 +53,6 @@ type Props = { buildId: number }
 
 export function CommentPanel({ buildId }: Props) {
   const fileErrorId = useId()
-  const [comments, setComments] = useState<Comment[]>([])
   const [body, setBody] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -59,13 +60,11 @@ export function CommentPanel({ buildId }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const commentRefs = useRef<Record<number, HTMLDivElement | null>>({})
 
-  const load = useCallback(() => {
-    fetch(`/api/v1/comments?build_id=${buildId}`, { credentials: 'include' })
-      .then((r) => r.ok ? r.json() : [])
-      .then(setComments)
-  }, [buildId])
-
-  useEffect(() => { load() }, [load])
+  // Read through Query like every other list here (#845); a failure is its own line, not "No comments yet".
+  const queryClient = useQueryClient()
+  const commentsQuery = useQuery({ queryKey: queryKeys.comments(buildId), queryFn: () => getComments(buildId) })
+  const comments: Comment[] = commentsQuery.data ?? []
+  const load = () => { void queryClient.invalidateQueries({ queryKey: queryKeys.comments(buildId) }) }
 
   useEffect(() => {
     const hash = window.location.hash
@@ -77,7 +76,7 @@ export function CommentPanel({ buildId }: Props) {
     const isDark = document.documentElement.classList.contains('dark')
     el.style.backgroundColor = isDark ? 'rgb(0 112 243 / 0.18)' : '#d3e5ff'
     setTimeout(() => { el.style.backgroundColor = '' }, 2000)
-  }, [comments])
+  }, [commentsQuery.data])
 
   // Started on mount so a click usually copies without waiting on the network.
   useEffect(() => { void loadTeammateBases() }, [])
@@ -123,7 +122,13 @@ export function CommentPanel({ buildId }: Props) {
     <div className="flex h-full flex-col gap-3 px-1">
       <ScrollArea className="flex-1 rounded-md border">
         <div className="p-3">
-          {comments.length === 0 ? (
+          {/* The same states and order as `listView`: rows held through a failed refresh — an empty
+              answer included — are still the answer, so only a failure with nothing to show says so. */}
+          {commentsQuery.isPending ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Loading comments…</p>
+          ) : commentsQuery.isError && !commentsQuery.data ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Couldn&apos;t load comments.</p>
+          ) : comments.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No comments yet.</p>
           ) : (
             <div className="flex flex-col">
