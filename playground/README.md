@@ -9,6 +9,7 @@
 ```sh
 # 루트에서
 pnpm dev           # relay + dashboard + ios + android
+pnpm dev:lean      # pnpm dev를 Lean mode로 (두 에이전트 모두)
 pnpm dev:pool      # relay + ios + mock agents (시뮬레이터 없이 다중 기기 테스트)
 pnpm dev:relay     # 단일 컴포넌트 (dev:ios / dev:android 도 동일)
 ```

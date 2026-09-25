@@ -16,6 +16,7 @@
     "typecheck": "tsc -b && pnpm -r --if-present typecheck",
     "prepare": "lefthook install || true",
     "dev": "node scripts/dev-preflight.mjs relay dashboard && concurrently -k -n relay,dashboard,ios,android -c cyan,magenta,green,yellow \"pnpm dev:relay\" \"pnpm --filter @tapflowio/dashboard dev\" \"pnpm dev:ios\" \"pnpm dev:android\"",
+    "dev:lean": "node scripts/dev-lean.mjs",
     "dev:pool": "node scripts/dev-preflight.mjs relay && concurrently -k -n relay,ios,mocks -c cyan,green,yellow \"pnpm dev:relay\" \"pnpm dev:ios\" \"pnpm --filter @tapflowio/playground mock-agents\"",
     "dev:relay": "pnpm --filter @tapflowio/playground relay",
     "dev:ios": "pnpm --filter @tapflowio/playground ios-agent",

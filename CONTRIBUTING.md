@@ -24,6 +24,7 @@ All dev/test commands run **from the repo root**. The `playground/` package hold
 | Command | What it runs |
 |---------|--------------|
 | `pnpm dev` | relay + dashboard + iOS agent + Android agent |
+| `pnpm dev:lean` | `pnpm dev` with Lean mode on, for both agents ([Configuration — Lean mode](./docs/reference/configuration.md#lean-mode-agent)) |
 | `pnpm dev:pool` | relay + iOS agent + mock agents (multi-device testing without real simulators) |
 | `pnpm dev:relay` / `pnpm dev:ios` / `pnpm dev:android` | a single component |
 | `pnpm seed` / `pnpm seed:demo` | seed the local DB with test / demo data |
