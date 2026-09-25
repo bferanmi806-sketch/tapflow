@@ -17,7 +17,7 @@ import type { AgentRegistered } from '@tapflowio/protocol'
 // for real, which is exactly the situation: the only thing that differs between the two ports is the
 // listener, so a pass on one and a refusal on the other is the property itself.
 
-interface HttpResult { status: number; body: { error?: string; ok?: boolean; initialized?: boolean } }
+interface HttpResult { status: number; body: { error?: string; ok?: boolean; initialized?: boolean; canInitialize?: boolean } }
 
 function request(port: number, method: string, urlPath: string, payload?: unknown, headers: Record<string, string> = {}): Promise<HttpResult> {
   return new Promise((resolve, reject) => {
@@ -138,6 +138,8 @@ describe('RelayServer tunnel listener', () => {
 
     it('refuses first-admin setup through the tunnel and allows it on the relay port', async () => {
       await start()
+      expect((await request(tunnelPort, 'GET', '/api/v1/auth/status')).body.canInitialize).toBe(false)
+      expect((await request(relayPort, 'GET', '/api/v1/auth/status')).body.canInitialize).toBe(true)
       const viaTunnel = await request(tunnelPort, 'POST', '/api/v1/auth/init', { email: 'evil@example.com', password: 'password123' })
       expect(viaTunnel.status).toBe(403)
       expect(userCount()).toBe(0)

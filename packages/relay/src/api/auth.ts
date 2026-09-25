@@ -98,14 +98,23 @@ export function handleLogout(_req: http.IncomingMessage, res: http.ServerRespons
   res.end(JSON.stringify({ ok: true }))
 }
 
-export function handleAuthStatus(_req: http.IncomingMessage, res: http.ServerResponse): void {
-  json(res, 200, { initialized: isInitialized() })
+// The one rule for who may create the first admin, read by both `auth/init` and `auth/status` so the
+// page that asks for the account and the endpoint that refuses it cannot disagree.
+function mayInitialize(req: http.IncomingMessage, trustedProxies: string[]): boolean {
+  return resolveClient(req, trustedProxies).isLocal
+}
+
+// `canInitialize` lets the setup page show the instruction instead of a form this browser could only
+// submit to a 403. It is advice to the page, not the gate: `handleInit` still refuses on its own.
+export function handleAuthStatus(req: http.IncomingMessage, res: http.ServerResponse, trustedProxies: string[] = config.local.trustedProxies): void {
+  const initialized = isInitialized()
+  json(res, 200, { initialized, canInitialize: !initialized && mayInitialize(req, trustedProxies) })
 }
 
 export async function handleInit(req: http.IncomingMessage, res: http.ServerResponse, trustedProxies: string[] = config.local.trustedProxies): Promise<void> {
   // 무인증 부트스트랩(`auth/init`)은 노출 인스턴스에서 최초 부팅~소유자 설정 사이 선점당할 수 있다.
   // localhost 출처만 허용 → 원격 선점 차단. 헤드리스 서버는 SSH로 들어가 그 서버에서 admin init 실행.
-  if (!resolveClient(req, trustedProxies).isLocal) {
+  if (!mayInitialize(req, trustedProxies)) {
     return json(res, 403, { error: 'Initialization is only allowed from localhost. Run `tapflow admin init` on the relay host.' })
   }
 

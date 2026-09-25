@@ -54,7 +54,7 @@ describe('GET /api/v1/auth/status', () => {
   it('유저 없음 → { initialized: false }', async () => {
     const { status, body } = await httpGet(port, '/api/v1/auth/status')
     expect(status).toBe(200)
-    expect(body).toEqual({ initialized: false })
+    expect(body).toEqual({ initialized: false, canInitialize: true })
   })
 
   it('유저 있음 → { initialized: true }', async () => {
@@ -63,7 +63,7 @@ describe('GET /api/v1/auth/status', () => {
       .run('admin@example.com', 'Admin', 'Admin', makePasswordHash('password123'))
     const { status, body } = await httpGet(port, '/api/v1/auth/status')
     expect(status).toBe(200)
-    expect(body).toEqual({ initialized: true })
+    expect(body).toEqual({ initialized: true, canInitialize: false })
   })
 
   it('인증 쿠키 없이도 200 응답 (public endpoint)', async () => {

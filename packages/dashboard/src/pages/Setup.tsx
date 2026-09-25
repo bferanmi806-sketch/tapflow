@@ -56,6 +56,9 @@ export function Setup() {
   }
 
   if (status.data?.initialized) return <Navigate to="/login" replace />
+  // Only an explicit no hides the form. A failed check or a relay that does not report it keeps the
+  // form, and `auth/init` still refuses on its own.
+  const remote = status.data?.canInitialize === false
 
   return (
     <div className="flex min-h-svh items-center justify-center overflow-hidden p-4">
@@ -69,49 +72,61 @@ export function Setup() {
             <CardTitle className="text-2xl tracking-display-md">Set up tapflow</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Admin email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="admin@yourteam.com"
-                  autoComplete="email"
+            {remote ? (
+              <div className="flex flex-col gap-3">
+                <p id="setup-remote-command" className="text-sm text-muted-foreground">
+                  The admin account can only be created on the machine running the relay. Run this there:
+                </p>
+                {/* A field rather than text, so a keyboard user can select it. No copy button: this page
+                    is not on localhost, and over plain HTTP the clipboard API is not available. */}
+                <Input readOnly value="tapflow admin init" aria-labelledby="setup-remote-command" onFocus={(e) => e.currentTarget.select()} className="font-mono text-xs" />
+                <p className="text-sm text-muted-foreground">Or open this dashboard on that machine at localhost.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Admin email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="admin@yourteam.com"
+                    autoComplete="email"
 aria-required="true" aria-invalid={!!errors.email}
 aria-describedby={errors.email ? 'email-error' : undefined}
 {...register('email')}
-                />
-                <FieldError id="email-error" message={errors.email?.message} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="new-password"
+                  />
+                  <FieldError id="email-error" message={errors.email?.message} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    autoComplete="new-password"
 aria-required="true" aria-invalid={!!errors.password}
 aria-describedby={errors.password ? 'password-error' : undefined}
 {...register('password')}
-                />
-                <FieldError id="password-error" message={errors.password?.message} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="confirm">Confirm password</Label>
-                <Input
-                  id="confirm"
-                  type="password"
-                  autoComplete="new-password"
+                  />
+                  <FieldError id="password-error" message={errors.password?.message} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="confirm">Confirm password</Label>
+                  <Input
+                    id="confirm"
+                    type="password"
+                    autoComplete="new-password"
 aria-required="true" aria-invalid={!!errors.confirm}
 aria-describedby={errors.confirm ? 'confirm-error' : undefined}
 {...register('confirm')}
-                />
-                <FieldError id="confirm-error" message={errors.confirm?.message} />
-              </div>
-              <FieldError assertive id="setup-error" message={errors.root?.message} />
-              <Button type="submit" size="lg" disabled={isSubmitting} className="w-full mt-1">
-                {isSubmitting ? 'Creating account…' : 'Create admin account'}
-              </Button>
-            </form>
+                  />
+                  <FieldError id="confirm-error" message={errors.confirm?.message} />
+                </div>
+                <FieldError assertive id="setup-error" message={errors.root?.message} />
+                <Button type="submit" size="lg" disabled={isSubmitting} className="w-full mt-1">
+                  {isSubmitting ? 'Creating account…' : 'Create admin account'}
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>

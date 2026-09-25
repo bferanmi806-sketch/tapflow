@@ -368,7 +368,7 @@ export class RelayServer {
     const u = this.uploadsDir
 
     // auth
-    this.router.get('/api/v1/auth/status', handleAuthStatus)
+    this.router.get('/api/v1/auth/status', (req, res) => handleAuthStatus(req, res, this.options.trustedProxies ?? []))
     this.router.post('/api/v1/auth/init', (req, res) => handleInit(req, res, this.options.trustedProxies ?? []))
     this.router.get('/api/v1/auth/me', handleMe)
     this.router.post('/api/v1/auth/login', (req, res) => handleLogin(req, res, this.options.trustedProxies ?? []))
