@@ -14,7 +14,7 @@ tapflow init
 
 | 생성물 | 내용 |
 |--------|------|
-| `tapflow.config.json` | 릴레이 설정 파일. 선택한 포트·터널·HTTPS 설정과 데이터 디렉토리가 들어갑니다. |
+| `tapflow.config.json` | 릴레이 설정 파일. 선택한 포트·터널·HTTPS 설정과 데이터 디렉토리, 이 머신 에이전트의 Lean mode가 들어갑니다. |
 | `AGENTS.md` | 코딩 에이전트용 tapflow 섹션. `<!-- tapflow:begin -->` 마커 사이에 들어가고, 마커 밖에 쓴 내용은 `init`을 다시 실행해도 그대로 남습니다. |
 | `CLAUDE.md` | Claude Code용 `@AGENTS.md` 한 줄. 설치 디렉토리가 tapflow 전용일 때만 만듭니다. 앱 저장소처럼 다른 용도가 섞인 디렉토리에 CLAUDE.md가 생기면, Claude Code가 그 저장소의 다른 `AGENTS.md`를 읽지 않게 됩니다. |
 | `data/.env` | DNS·ACME 자격 증명을 담는 파일. DNS 자동 발급을 선택했을 때만 만들어집니다. |
@@ -22,12 +22,13 @@ tapflow init
 
 `init`을 다시 실행하면 설정은 그대로 두고 `AGENTS.md`의 tapflow 섹션만 갱신합니다. 설정을 새로 만들려면 `--force`를 씁니다.
 
-이어서 대화형 프롬프트가 순서대로 나타납니다. 터널을 먼저 고르고, 터널 없이 LAN으로 쓸 때만 스트리밍 성능과 인증서 방식을 묻습니다.
+이어서 대화형 프롬프트가 순서대로 나타납니다. 터널을 먼저 고르고, 터널 없이 LAN으로 쓸 때만 스트리밍 성능과 인증서 방식을 묻습니다. Lean mode는 Mac에서만 묻습니다.
 
 ```text
 1. 터널 선택           None · Tailscale · rathole
 2. 스트리밍 성능       터널이 None일 때만 — Standard(HTTP) · Smooth(HTTPS)
 3. 인증서 방식         Smooth를 골랐을 때만 — DNS 자동 발급 · 직접 인증서
+4. Lean mode           Mac에서만 — Off · On
 ```
 
 ## 1. 터널 선택
@@ -71,6 +72,17 @@ HTTPS를 켜기로 했다면 인증서를 어떻게 마련할지 고릅니다.
 | **직접 인증서(import)** | 사내 PKI나 이미 보유한 인증서 파일 경로를 지정합니다. 갱신은 직접 관리합니다. |
 
 DNS 자동 발급을 고르면 업체를 선택하고 도메인을 입력합니다. 이때 토큰을 담을 `.tapflow/data/.env`가 함께 만들어집니다. 인증서 발급 모드와 설정 키의 전체 레퍼런스는 [설정 파일 — HTTPS](/ko/reference/configuration#https-보안-컨텍스트)에 있습니다.
+
+## 4. Lean mode (Mac 전용)
+
+에이전트가 부팅하는 iOS 시뮬레이터를 가볍게 돌릴지 정합니다.
+
+| 선택 | 의미 |
+|------|------|
+| **Off** | 시뮬레이터가 모든 백그라운드 서비스를 실행합니다. 기본값입니다. |
+| **On** | tapflow가 시뮬레이터를 실행하는 동안 정해진 목록의 백그라운드 서비스를 끕니다. iOS 27에서 재 보면 시뮬레이터 한 대의 메모리가 4분의 1 정도 줄어듭니다. |
+
+선택한 값은 `tapflow.config.json`의 `agent.lean`에 저장되고 나중에 그 파일에서 바꿀 수 있습니다. 무엇이 꺼지고 무엇이 켜져 있는지, 언제 적용되는지는 [설정 파일 — Lean mode](/ko/reference/configuration#lean-mode-에이전트)에 정리돼 있습니다.
 
 ## 데이터 디렉토리의 .env — 비밀 보관
 

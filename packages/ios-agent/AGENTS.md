@@ -803,7 +803,7 @@ it back, 23–27 requests getting through each time. `SimulatorNetwork` watches 
 file while anything is offline and reports `enforcement-lost` — the one reason that invalidates work
 already done, so the dashboard interrupts rather than re-colours.
 
-#### Two things that will bite
+#### Three things that will bite
 
 - **`booted` on `DeviceState` is a cache, not the truth.** `initDeviceStates` clears it on
   `agent:registered`, which is every *reconnect*. Reading it as liveness shipped a regression twice
@@ -814,6 +814,11 @@ already done, so the dashboard interrupts rather than re-colours.
   with tapflow's extension installed — silently, because the class *reports* a missing container app
   rather than failing. `IOSAgent` points its `SimulatorNetwork` at a nonexistent host binary under
   vitest, and `options.network` injects one.
+- **Tests must never reach the real Lean mode store either.** It is the host directory every
+  simulator's `launchd_sim` reads its disabled services from (`/private/var/tmp/...SimDevice.<udid>`),
+  so a suite that booted a mock device with Lean mode on, or swept leftover markers on connect, would
+  edit the overrides of the developer's real simulators — just as silently. `IOSAgent` points its
+  `LeanStore` at a nonexistent directory under vitest, and `options.leanStore` injects one.
 
 #### The filter's Swift has tests, and CI runs them
 

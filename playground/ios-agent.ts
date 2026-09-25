@@ -5,7 +5,7 @@ const RELAY = process.env['RELAY_URL'] ?? 'ws://localhost:4000'
 const deviceArgIdx = process.argv.indexOf('--device')
 const deviceArg = deviceArgIdx >= 0 ? process.argv[deviceArgIdx + 1] : undefined
 
-const agent = new IOSAgent()
+const agent = new IOSAgent({ lean: process.env.TAPFLOW_LEAN === 'on' })
 
 const shutdown = () => { agent.disconnect(); process.exit(0) }
 process.once('SIGINT', shutdown)

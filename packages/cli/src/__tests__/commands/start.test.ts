@@ -19,7 +19,7 @@ vi.mock('@tapflowio/relay', () => ({
   install: { dir: '/tmp/tapflow-test-install', reason: 'default', configPath: '/tmp/tapflow-test-install/tapflow.config.json', defaultDataLayout: 'data', missing: false, shadowed: [] },
   configFound: true,
 
-  config: { local: { port: 4000, dataDir: '/tmp/tapflow-test', wsBackpressureBytes: 1048576, trustedProxies: [], tunnelPort: null }, relay: { url: null }, tunnel: null, tls: undefined },
+  config: { local: { port: 4000, dataDir: '/tmp/tapflow-test', wsBackpressureBytes: 1048576, trustedProxies: [], tunnelPort: null }, relay: { url: null }, tunnel: null, tls: undefined, agent: { lean: false } },
 }))
 vi.mock('@tapflowio/ios-agent', () => ({ requestAudioPermission: vi.fn(), isAudioSupported: vi.fn(() => true) }))
 vi.mock('@tapflowio/android-agent', () => ({}))
@@ -232,7 +232,18 @@ describe('cmdStart', () => {
 
   it('--device 로 특정 디바이스 지정', async () => {
     await cmdStart({ platform: 'ios', device: 'iPhone 16 Pro' })
-    expect(iosConnectSpy).toHaveBeenCalledWith('ws://localhost:4000', { deviceFilter: 'iPhone 16 Pro' })
+    expect(iosConnectSpy).toHaveBeenCalledWith('ws://localhost:4000', { deviceFilter: 'iPhone 16 Pro', lean: false })
+  })
+
+  it('hands agent.lean from this machine\'s config to the agents it starts', async () => {
+    const { config } = await import('@tapflowio/relay')
+    config.agent.lean = true
+    try {
+      await cmdStart({ platform: 'ios' })
+      expect(iosConnectSpy).toHaveBeenCalledWith('ws://localhost:4000', expect.objectContaining({ lean: true }))
+    } finally {
+      config.agent.lean = false
+    }
   })
 
   it('존재하지 않는 --device 지정 시 exit(1)', async () => {

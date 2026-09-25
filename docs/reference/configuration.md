@@ -35,6 +35,7 @@ Paths inside the file are relative to the file itself, the way a `tsconfig.json`
 | `tls` | LAN HTTPS (secure context) settings, required for WebCodecs hardware decode. See the HTTPS section below. |
 | `smtp` | SMTP settings for sending invitation and password reset emails. |
 | `webhooks` | Outbound endpoints notified when a build's review status changes. Signing secrets are read from env vars named by `secretEnv`. See the Webhooks section below. |
+| `agent.lean` | Lean mode for the iOS simulators this machine's agent boots. Read by the agent, not the relay. Default `false`. See the Lean mode section below. |
 
 `smtp.from` defaults to `tapflow <smtp.user>` when `smtp.user` is set. Override it explicitly if you need a different sender address.
 
@@ -53,6 +54,7 @@ Secrets can also live in the data directory's `.env` file. The relay loads it fi
 | `TAPFLOW_DATA_DIR` | `local.dataDir` | `<install>/data` | DB and uploads directory. Relative to the current directory here, and to the config file in `local.dataDir`. An install that already holds `.tapflow/data` or `.tapflow-data` keeps using it. |
 | `TAPFLOW_RELAY_URL` | `relay.url` | *(empty)* | Relay URL used as default by CLI commands |
 | `TAPFLOW_AGENT_TOKEN` | — | *(empty)* | Token with the `agent` scope for remote relay authentication. The `--token` flag takes precedence. See [Agent Setup](/guide/agent#remote-relay-authentication). |
+| `TAPFLOW_LEAN` | `agent.lean` | `off` | `on` or `off`. Any other value is ignored with a warning, and the config file's value is used. |
 | `TAPFLOW_TRUSTED_PROXIES` | — | *(empty)* | Comma-separated IPs of trusted reverse proxies (e.g. `127.0.0.1,::1`). Set this when the relay runs behind a same-host reverse proxy so it reads the real client IP from `X-Forwarded-For` instead of the proxy's address. Empty disables forwarded-header parsing. |
 | `TAPFLOW_BUILD_TTL_DAYS` | — | `7` | Days a build is kept after its deletion is scheduled before the files and record are purged. Scheduling is a manual action — marking a build **Done** no longer deletes it. Set to a small value (e.g. `0.001`) to verify cleanup quickly in local testing. |
 | `TAPFLOW_WS_BACKPRESSURE_BYTES` | — | `1048576` (1 MB) | Binary frame drop threshold per browser socket. Frames are silently dropped when the socket buffer exceeds this value. |
@@ -155,6 +157,29 @@ These variables are set on the **agent** process (`tapflow agent start` / `tapfl
 | `TAPFLOW_IOS_MAX_SIZE` / `TAPFLOW_ANDROID_MAX_SIZE` | *(native)* | Per-platform override of `TAPFLOW_MAX_SIZE`. |
 | `TAPFLOW_ANDROID_FPS` | `30` | Android emulator capture frame rate (gRPC path). |
 | `TAPFLOW_ANDROID_BACKEND` | *(auto)* | Force the Android backend — `grpc` or `scrcpy`. Auto-selected by device type when unset. |
+
+## Lean mode (agent)
+
+With `agent.lean` set to `true`, the agent turns off a fixed list of background services on every iOS simulator it boots. Measured on iOS 27, a simulator then uses about a quarter less memory, roughly 0.5 GB, so a Mac holds more simulators before it starts swapping.
+
+```json
+{ "agent": { "lean": true } }
+```
+
+**What turns off:** Siri and Apple Intelligence background work, iCloud Keychain and backup, the Health app, fitness and HomeKit, photo analysis, Family Sharing and Screen Time, News, Maps sync and Tips, iMessage and FaceTime, AirDrop, Continuity, CarPlay, Watch and Find My, Safari bookmark sync, and telemetry.
+
+**What stays on:** the services apps commonly rely on and what a tester sees on screen. That covers the wallpaper and widgets, dictation, speech and keyboard suggestions, Sign in with Apple, CloudKit and iCloud Drive, StoreKit, push and Wallet, HealthKit, the photo picker, Contacts and Calendar, Spotlight and Settings search, universal links, WeatherKit, MapKit, Game Center and CallKit. The list is fixed rather than worked out from your app, so if an app under test needs a service from the list above, turn Lean mode off. tapflow's own features, including streaming, input, the UI tree, the clipboard, audio, installs, deep links and the network control, were checked on a lean simulator.
+
+It only applies while tapflow runs the simulator:
+
+- The agent writes the setting just before it boots a simulator that is shut down, and removes it when it shuts the simulator down. Booting that simulator later from Xcode or Simulator.app starts it with every service running.
+- A simulator that is already running when a session asks for it is used as it is. Lean mode applies from its next boot through tapflow.
+- If the agent stops without shutting a simulator down, that simulator stays lean while it keeps running, whoever opens it. Once it is shut down, the next agent to connect removes the setting.
+- `tapflow boot` starts a simulator without going through the agent, so it boots it as it is.
+
+It needs an iOS 18.5 or later runtime; other runtimes, tvOS and watchOS simulators are left alone. Android emulators are not covered yet. `tapflow doctor ios` shows whether Lean mode is on and how many simulators are lean right now.
+
+In a setup with several Macs, each Mac's `tapflow.config.json` decides for the agent on that Mac.
 
 ## HTTPS (secure context)
 

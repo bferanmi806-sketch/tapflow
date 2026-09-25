@@ -169,6 +169,42 @@ describe('cmdInitConfig', () => {
     expect(cfg.tls).toBeUndefined()
   })
 
+  describe('Lean mode', () => {
+    const read = () => JSON.parse(fs.readFileSync(path.join(tmpDir, 'tapflow.config.json'), 'utf-8'))
+
+    it('asks on a Mac and writes the answer', async () => {
+      setTTY(true)
+      vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
+      mockSelect.mockResolvedValueOnce('none').mockResolvedValueOnce('standard').mockResolvedValueOnce('on')
+      await cmdInitConfig({})
+      expect(mockSelect).toHaveBeenLastCalledWith(expect.objectContaining({ message: expect.stringContaining('Lean mode') }))
+      expect(read().agent).toEqual({ lean: true })
+    })
+
+    it('does not ask when --tunnel was given, which is the prompt-free way to init', async () => {
+      setTTY(true)
+      vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
+      await cmdInitConfig({ tunnel: 'tailscale' })
+      expect(mockSelect).not.toHaveBeenCalled()
+      expect(read().agent).toEqual({ lean: false })
+    })
+
+    it('writes it off, so the key is there to find, when nobody was asked', async () => {
+      setTTY(false)
+      await cmdInitConfig({})
+      expect(read().agent).toEqual({ lean: false })
+    })
+
+    it('does not ask where there is no iOS simulator to make lean', async () => {
+      setTTY(true)
+      vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
+      mockSelect.mockResolvedValueOnce('none').mockResolvedValueOnce('standard')
+      await cmdInitConfig({})
+      expect(mockSelect).toHaveBeenCalledTimes(2)
+      expect(read().agent).toEqual({ lean: false })
+    })
+  })
+
   it('none + High + Cloudflare → byo-api-token tls 생성', async () => {
     setTTY(true)
     mockSelect.mockResolvedValueOnce('none').mockResolvedValueOnce('high').mockResolvedValueOnce('cloudflare')

@@ -95,11 +95,13 @@ vi.mock('../SimProcessTree', () => ({
 import crypto from 'crypto'
 import { WebSocket, WebSocketServer } from 'ws'
 import { RelayServer, initDb, closeDb, getDb } from '@tapflowio/relay'
-import { IOSAgent } from '../IOSAgent'
+import { IOSAgent, leanSupported } from '../IOSAgent'
 import { ScreenCaptureStreamer } from '../ScreenCaptureStreamer'
 import { AudioCaptureStreamer } from '../AudioCaptureStreamer'
 import { launchAudioHelper } from '@tapflowio/audiotap-helper'
 import { SimctlWrapper } from '../SimctlWrapper'
+import { LeanStore } from '../LeanStore'
+import { LEAN_LABELS } from '../leanLabels'
 import { TouchHelper } from '../TouchHelper'
 import { barrier, waitForOpen, waitForType, waitForTypeOrNull } from '@tapflowio/test-utils'
 import type { SessionJoined } from '@tapflowio/protocol'
@@ -3910,4 +3912,144 @@ describe('IOSAgent', () => {
     })
   })
 
+
+  // ── Lean mode: applied while tapflow runs a device, put back when tapflow shuts it down ──────────
+  describe('Lean mode', () => {
+    let leanRoot: string
+    let store: LeanStore
+    let order: string[]
+    beforeEach(() => {
+      leanRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'tapflow-lean-agent-'))
+      store = new LeanStore(leanRoot)
+      order = []
+      const apply = store.apply.bind(store)
+      const revert = store.revert.bind(store)
+      vi.spyOn(store, 'apply').mockImplementation((udid, labels) => { order.push('apply'); apply(udid, labels) })
+      vi.spyOn(store, 'revert').mockImplementation((udid) => { order.push('revert'); return revert(udid) })
+    })
+    afterEach(() => fs.rmSync(leanRoot, { recursive: true, force: true }))
+
+    /** A device on a runtime Lean mode supports; `mockSimctl`'s default iOS 18.3 is below the cut. */
+    function simctlOn(status: 'shutdown' | 'booted', osVersion = 'iOS 26.5') {
+      const simctl = mockSimctl(status === 'booted')
+      ;(simctl.listDevices as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { id: 'dev-1', name: 'iPhone 17 Pro', platform: 'ios', status, osVersion },
+      ])
+      ;(simctl.boot as ReturnType<typeof vi.fn>).mockImplementation(async () => { order.push('boot') })
+      ;(simctl.shutdown as ReturnType<typeof vi.fn>).mockImplementation(async () => { order.push('shutdown') })
+      ;(simctl.erase as ReturnType<typeof vi.fn>).mockImplementation(async () => { order.push('erase') })
+      return simctl
+    }
+
+    async function boot(simctl: SimctlWrapper, lean: boolean, payload: Record<string, unknown> = {}, afterConnect = () => {}) {
+      const agent = new IOSAgent({ intervalMs: 50, lean, leanStore: store }, simctl)
+      await agent.connect(`ws://localhost:${port}`)
+      afterConnect()
+      const browser = new WebSocket(`ws://localhost:${port}`)
+      await waitForOpen(browser)
+      browser.send(JSON.stringify({ type: 'session:start', sessionId: agent.sessionId }))
+      await waitForType(browser, 'session:joined')
+      browser.send(JSON.stringify({ type: 'device:boot', requestId: 'rq-lean', sessionId: agent.sessionId, payload: { deviceId: 'dev-1', ...payload } }))
+      await waitForType(browser, 'device:ready')
+      return { agent, browser }
+    }
+
+    it('disables the labels before booting a device that is shut down', async () => {
+      const { agent, browser } = await boot(simctlOn('shutdown'), true)
+      expect(order).toEqual(['apply', 'boot'])
+      expect(store.apply).toHaveBeenCalledWith('dev-1', LEAN_LABELS)
+      expect(store.isApplied('dev-1')).toBe(true)
+      agent.disconnect(); browser.close()
+    })
+
+    it('leaves a device that is already running alone, and still boots it', async () => {
+      // The twin of the case above: the store is only written while launchd_sim is not reading it.
+      const { agent, browser } = await boot(simctlOn('booted'), true)
+      expect(order).toEqual(['boot'])
+      expect(store.isApplied('dev-1')).toBe(false)
+      agent.disconnect(); browser.close()
+    })
+
+    it('applies after a full erase has shut the device down, before it boots again', async () => {
+      const { agent, browser } = await boot(simctlOn('booted'), true, { resetMode: 'full-erase' })
+      expect(order).toEqual(['shutdown', 'apply', 'erase', 'boot'])
+      agent.disconnect(); browser.close()
+    })
+
+    it('applies from iOS 18.5 on, the first runtime it supports', () => {
+      expect(leanSupported('iOS 18.5')).toBe(true)
+      expect(leanSupported('iOS 27.0')).toBe(true)
+      expect(leanSupported('iOS 18.4')).toBe(false)
+    })
+
+    it('does nothing to a device on a runtime it does not support', async () => {
+      for (const osVersion of ['iOS 18.4', 'tvOS 26.0', 'watchOS 26.0', 'iOS']) {
+        order = []
+        const { agent, browser } = await boot(simctlOn('shutdown', osVersion), true)
+        expect(order, osVersion).toEqual(['boot'])
+        agent.disconnect(); browser.close()
+      }
+    })
+
+    it('boots anyway when the store cannot be written', async () => {
+      vi.mocked(store.apply).mockImplementation(() => { order.push('apply'); throw new Error('EACCES') })
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const { agent, browser } = await boot(simctlOn('shutdown'), true)
+      expect(order).toEqual(['apply', 'boot'])
+      agent.disconnect(); browser.close()
+    })
+
+    it('puts the labels back once it has shut the device down', async () => {
+      const simctl = simctlOn('shutdown')
+      const { agent, browser } = await boot(simctl, true)
+      browser.send(JSON.stringify({ type: 'device:shutdown', requestId: 'rq-off', sessionId: agent.sessionId, payload: { deviceId: 'dev-1' } }))
+      await waitForType(browser, 'device:shutdown-done')
+      expect(order).toEqual(['apply', 'boot', 'shutdown', 'revert'])
+      expect(store.isApplied('dev-1')).toBe(false)
+      agent.disconnect(); browser.close()
+    })
+
+    it('still answers the shutdown when the labels cannot be put back', async () => {
+      const simctl = simctlOn('shutdown')
+      const { agent, browser } = await boot(simctl, true)
+      vi.mocked(store.revert).mockImplementation(() => { order.push('revert'); throw new Error('unreadable') })
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      browser.send(JSON.stringify({ type: 'device:shutdown', requestId: 'rq-off', sessionId: agent.sessionId, payload: { deviceId: 'dev-1' } }))
+      await waitForType(browser, 'device:shutdown-done')
+      expect(order).toEqual(['apply', 'boot', 'shutdown', 'revert'])
+      agent.disconnect(); browser.close()
+    })
+
+    it('with Lean mode off, puts back a device it left lean before booting it', async () => {
+      // Marked after connect, so it is the boot path doing this and not the sweep below.
+      const { agent, browser } = await boot(simctlOn('shutdown'), false, {}, () => {
+        store.apply('dev-1', LEAN_LABELS)
+        order = []
+      })
+      expect(order).toEqual(['revert', 'boot'])
+      expect(store.isApplied('dev-1')).toBe(false)
+      agent.disconnect(); browser.close()
+    })
+
+    describe('on connect', () => {
+      it('puts back a shut-down device an earlier run left lean', async () => {
+        store.apply('dev-1', LEAN_LABELS)
+        const agent = new IOSAgent({ intervalMs: 50, lean: true, leanStore: store }, simctlOn('shutdown'))
+        await agent.connect(`ws://localhost:${port}`)
+        expect(store.isApplied('dev-1')).toBe(false)
+        agent.disconnect()
+      })
+
+      it('leaves one that is still running, and one that no longer exists', async () => {
+        // The twin of the case above.
+        store.apply('dev-1', LEAN_LABELS)
+        store.apply('gone-1', LEAN_LABELS)
+        const agent = new IOSAgent({ intervalMs: 50, lean: true, leanStore: store }, simctlOn('booted'))
+        await agent.connect(`ws://localhost:${port}`)
+        expect(store.isApplied('dev-1')).toBe(true)
+        expect(store.isApplied('gone-1')).toBe(true)
+        agent.disconnect()
+      })
+    })
+  })
 })

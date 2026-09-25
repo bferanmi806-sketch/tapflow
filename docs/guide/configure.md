@@ -14,7 +14,7 @@ The command can create up to five things, all inside the install directory.
 
 | Output | Contents |
 |--------|----------|
-| `tapflow.config.json` | Relay configuration. Holds the port, tunnel, HTTPS settings you choose, and the data directory. |
+| `tapflow.config.json` | Relay configuration. Holds the port, tunnel, HTTPS settings you choose, the data directory, and Lean mode for this machine's agent. |
 | `AGENTS.md` | A tapflow section for coding agents, between `<!-- tapflow:begin -->` markers. Anything you write outside them is kept when you run `init` again. |
 | `CLAUDE.md` | One line, `@AGENTS.md`, for Claude Code. Written only when the install directory is tapflow's own — in a directory that is also something else, such as an app repository an older install lives in, a `CLAUDE.md` would stop Claude Code reading that repository's other `AGENTS.md` files. |
 | `data/.env` | Holds DNS / ACME credentials. Created only when you pick DNS auto-issue. |
@@ -22,12 +22,13 @@ The command can create up to five things, all inside the install directory.
 
 Running `init` again keeps your configuration and refreshes only the tapflow section of `AGENTS.md`. Pass `--force` to write a fresh configuration.
 
-The interactive prompts then appear in order. You pick a tunnel first; the streaming and certificate prompts only show when you run on the LAN with no tunnel.
+The interactive prompts then appear in order. You pick a tunnel first; the streaming and certificate prompts only show when you run on the LAN with no tunnel, and the Lean mode prompt only on a Mac.
 
 ```text
 1. Tunnel              None · Tailscale · rathole
 2. Streaming           Only when tunnel is None — Standard (HTTP) · Smooth (HTTPS)
 3. Certificate         Only when Smooth is chosen — DNS auto-issue · Existing cert
+4. Lean mode           Only on a Mac — Off · On
 ```
 
 ## 1. Pick a tunnel
@@ -71,6 +72,17 @@ If you turn on HTTPS, choose how the certificate is provided.
 | **Existing certificate (import)** | Point to an internal PKI or a certificate file you already hold. You manage renewal yourself. |
 
 When you choose DNS auto-issue, you select a provider and enter a domain, and a `.env` for the token is scaffolded in the data directory. The full reference for issuance modes and config keys is in [Configuration — HTTPS](/reference/configuration#https-secure-context).
+
+## 4. Lean mode (Mac only)
+
+This decides whether the iOS simulators your agent boots run lighter.
+
+| Choice | Meaning |
+|--------|---------|
+| **Off** | Simulators run every background service. This is the default. |
+| **On** | A fixed list of background services is turned off while tapflow runs the simulator. Measured on iOS 27, each simulator uses about a quarter less memory. |
+
+The answer is saved as `agent.lean` in `tapflow.config.json`, and you can change it there later. What turns off, what stays on and when it applies are listed in [Configuration — Lean mode](/reference/configuration#lean-mode-agent).
 
 ## The data directory's .env — holding secrets
 

@@ -139,7 +139,7 @@ export async function cmdStart(opts: StartOptions): Promise<void> {
     const spinner = createSpinner(`Connecting ${platform} agent…`)
     spinner.start()
     try {
-      const agent = await AgentRegistry.connect(platform, relayUrl, { deviceFilter: opts.device })
+      const agent = await AgentRegistry.connect(platform, relayUrl, { deviceFilter: opts.device, lean: config.agent.lean })
       spinner.stop(true)
       agents.push(agent)
     } catch (e) {

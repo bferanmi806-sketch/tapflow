@@ -141,6 +141,20 @@ async function promptTunnel(): Promise<TunnelConfig | null> {
   return { provider: 'rathole', serverAddr: serverAddr.trim(), publicUrl: publicUrl.trim(), ssh }
 }
 
+// Off by default: the services it disables are ones no app under test was measured to need, but an
+// app that does need one would fail in a way that looks like its own bug.
+async function promptLean(): Promise<boolean> {
+  const answer = await select({
+    message: 'Lean mode (iOS simulators)',
+    options: [
+      { value: 'off', label: 'Off', hint: 'simulators run every background service' },
+      { value: 'on', label: 'On', hint: 'about a quarter less memory per simulator; Siri and background sync off' },
+    ],
+  })
+  if (isCancel(answer)) { cancel('Cancelled.'); process.exit(0) }
+  return answer === 'on'
+}
+
 // LAN(=no tunnel) HTTPS 선택. WebCodecs(빠른 영상)는 secure context(HTTPS)에서만 동작.
 // 도메인 없으면 Standard(HTTP/WASM)로 충분히 동작하므로 강요하지 않는다.
 async function promptTls(): Promise<TlsConfig | null> {
@@ -270,6 +284,11 @@ export async function cmdInitConfig(opts: InitConfigOptions): Promise<void> {
     tls = await promptTls()
   }
 
+  // Lean mode acts on iOS simulators only, so a machine that cannot run them is not asked. Nor is a
+  // `--tunnel` run, which the guide gives as the way to init without prompts — the HTTPS prompt is
+  // skipped there for the same reason.
+  const lean = process.platform === 'darwin' && isInteractive() && !opts.tunnel ? await promptLean() : false
+
   const dataDir = dataDirFor(install, home)
   const absoluteDataDir = path.join(install.dir, dataDir)
   const configOut = {
@@ -280,6 +299,8 @@ export async function cmdInitConfig(opts: InitConfigOptions): Promise<void> {
     local: { ...BASE_CONFIG.local, dataDir: toPosix(path.relative(path.dirname(configPath), absoluteDataDir)) },
     ...(tunnel != null ? { tunnel } : {}),
     ...(tls != null ? { tls } : {}),
+    // Written even when off, so the key is there to find and flip later.
+    agent: { lean },
   }
   try {
     fs.mkdirSync(install.dir, { recursive: true })

@@ -5,6 +5,8 @@ export interface AgentConnectOpts {
   deviceFilter?: string
   /** Opaque credential for remote relays (sent as `Authorization: Bearer`). Local relays need none. */
   token?: string
+  /** Lean mode (`agent.lean` in tapflow.config.json). Platforms without a lean technique ignore it. */
+  lean?: boolean
 }
 
 interface AgentRegistryOpts {

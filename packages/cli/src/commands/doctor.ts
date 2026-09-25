@@ -1,3 +1,4 @@
+import { config } from '@tapflowio/relay'
 import { runDoctorChecks, type DoctorCheck, type DoctorResult } from '../lib/doctor.js'
 import { banner, step, warn, GREEN, RED, YELLOW, BOLD, DIM, R } from '../lib/print.js'
 
@@ -26,7 +27,7 @@ export async function cmdDoctor(opts: { json?: boolean; platform?: string } = {}
     warn(`Unknown platform: ${opts.platform}. Supported: ios, android`)
     process.exit(1)
   }
-  const result = await runDoctorChecks(opts.platform)
+  const result = await runDoctorChecks(opts.platform, { lean: config.agent.lean })
 
   if (opts.json) {
     const ok = !hasFailures(result)

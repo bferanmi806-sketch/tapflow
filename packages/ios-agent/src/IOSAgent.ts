@@ -71,6 +71,8 @@ import {
 import type { AudioFrame } from '@tapflowio/agent-core'
 import { SimctlWrapper, isDeviceMissingError, ClipboardTooLargeError, firstLine } from './SimctlWrapper.js'
 import { SimulatorNetwork } from './SimulatorNetwork.js'
+import { LeanStore } from './LeanStore.js'
+import { LEAN_LABELS } from './leanLabels.js'
 import {
   MAX_CLIPBOARD_BYTES, clipboardByteLength,
   CLIPBOARD_SENTINEL_PREFIX as SENTINEL_PREFIX, isClipboardSentinel as isSentinel,
@@ -96,6 +98,15 @@ const AUDIO_POLL_MS = 1500
 // 아카이브 추출(tar/unzip) 시 stdout 상한. 기본 1MB 로는 파일 많은 큰 .app 에서 넘칠 수 있어 넉넉히 잡는다.
 const EXTRACT_MAXBUFFER = 256 * 1024 * 1024 // 256 MB
 
+/** Lean mode needs an iOS runtime of 18.5 or later, where launchd honours the host-side overrides
+ *  across reboots. tvOS, watchOS and visionOS devices come through the same list and are left alone. */
+export function leanSupported(osVersion: string | undefined): boolean {
+  const m = osVersion?.match(/^iOS (\d+)\.(\d+)/)
+  if (!m) return false
+  const [major, minor] = [Number(m[1]), Number(m[2])]
+  return major > 18 || (major === 18 && minor >= 5)
+}
+
 export interface IOSAgentOptions {
   fps?: number
   intervalMs?: number
@@ -111,6 +122,11 @@ export interface IOSAgentOptions {
   /** The three-layer network control (#607). Injectable so a test can point it somewhere harmless;
    *  defaults to one wired to this agent's simctl (and, under vitest, to nothing real). */
   network?: SimulatorNetwork
+  /** Lean mode (`agent.lean`): disable background services on each device this agent boots, and put
+   *  them back when it shuts the device down. */
+  lean?: boolean
+  /** Where the launchd overrides are written. Injectable for the same reason as `network`. */
+  leanStore?: LeanStore
 }
 
 interface DeviceState {
@@ -217,9 +233,10 @@ export class IOSAgent implements DeviceAgent, NetworkControlCapability {
    *
    * **The `DeviceAgent.boot`/`shutdown` delegates do not touch this**, and that is deliberate: they
    * hand a device id straight to simctl without opening a session, so a device they start is not one
-   * this agent is driving. Nothing in the repo calls either — the same position `stream()` is in — so
-   * wiring ownership through them would be a mechanism built for a caller that does not exist. A
-   * future caller that wants both should go through the boot handler rather than around it.
+   * this agent is driving. The only caller is `playground/ios-agent.ts`, which boots a device outside
+   * any session — so wiring ownership (or Lean mode) through them would serve a caller that has no
+   * session to own it. A caller that wants either should go through the boot handler rather than
+   * around it.
    */
   private readonly ownedDevices = new Set<string>()
   // Last app launched per device (deviceId → bundleId). The XCUITest tree backend
@@ -236,6 +253,8 @@ export class IOSAgent implements DeviceAgent, NetworkControlCapability {
   private _stopping = false
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private _reconnectAttempt = 0
+  private readonly lean: boolean
+  private readonly leanStore: LeanStore
 
   constructor(options: IOSAgentOptions = {}, simctl?: SimctlWrapper) {
     // IOSAgent는 직접 export되므로 AgentRegistry.canRun() 가드를 우회해 인스턴스화될 수 있다.
@@ -255,6 +274,9 @@ export class IOSAgent implements DeviceAgent, NetworkControlCapability {
     // without the app is in, so the tests exercise the real class along its real reporting path
     // (`filter-unavailable`) instead of a double that could drift from it. Same shape, and the same
     // reason, as `sleepBlocker` below.
+    this.lean = options.lean ?? false
+    // Never the host's real store under vitest, for the reason given for `network` just below.
+    this.leanStore = options.leanStore ?? new LeanStore(process.env.VITEST ? path.join(tmpdir(), 'tapflow-no-lean-store') : undefined)
     this.network = options.network ?? new SimulatorNetwork(
       this.simctl,
       process.env.VITEST ? { filterHostBinary: path.join(tmpdir(), 'tapflow-no-filter-host') } : {},
@@ -288,6 +310,7 @@ export class IOSAgent implements DeviceAgent, NetworkControlCapability {
     if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null }
     this.relayUrl = relayUrl
     const allDevices = await this.simctl.listDevices()
+    this.revertLeftoverLean(allDevices)
     const devices = this.deviceFilter
       ? allDevices.filter((d) => d.name === this.deviceFilter || d.id === this.deviceFilter)
       : allDevices
@@ -732,6 +755,7 @@ export class IOSAgent implements DeviceAgent, NetworkControlCapability {
         // ran. Without this check the superseded boot goes on to erase a device the tester has
         // since re-picked with the toggle off — the exact wipe-with-no-click this issue is about.
         if (seq !== state.bootSeq) { this.abandonBoot(state, seq, sessionId, requestId); return }
+        this.prepareLean(target)
         try {
           await this.simctl.erase(deviceId)
         } catch (err) {
@@ -762,6 +786,10 @@ export class IOSAgent implements DeviceAgent, NetworkControlCapability {
         // deadline to discover. `SimctlWrapper.boot` swallows `Unable to boot device in current
         // state: Booted`, so re-issuing it for a device that really is up costs one no-op
         // subprocess and makes "the wait only ever runs after a boot was accepted" true.
+        if (target.status === 'shutdown') this.prepareLean(target)
+        else if (this.lean && !this.leanStore.isApplied(deviceId)) {
+          logger.info(`Lean mode: ${target.name} is already running, so it applies from its next boot`)
+        }
         await this.bootWithZombieRecovery(deviceId)
       }
 
@@ -852,6 +880,52 @@ export class IOSAgent implements DeviceAgent, NetworkControlCapability {
     }
   }
 
+  // ── Lean mode ──────────────────────────────────────────────────────────────
+
+  /**
+   * Called only when the device is known to be shut down: `launchd_sim` reads the store when it
+   * starts, and a write while it runs is not known to survive. So a device that was already up when
+   * asked for is booted as it is, and becomes lean from its next boot through tapflow.
+   *
+   * **A failure here never stops the boot.** Lean mode is an optimisation and booting is the job.
+   */
+  private prepareLean(device: Device): void {
+    try {
+      if (!this.lean) {
+        this.revertLean(device.id)
+      } else if (!leanSupported(device.osVersion)) {
+        logger.info(`Lean mode: not applied to ${device.name} (${device.osVersion ?? 'unknown runtime'}) — iOS 18.5 or later only`)
+      } else {
+        this.leanStore.apply(device.id, LEAN_LABELS)
+      }
+    } catch (e) {
+      logger.warn(`Lean mode: could not update ${device.name}, booting it as it is:`, (e as Error).message)
+    }
+  }
+
+  /** Put back what Lean mode disabled on a device that is now shut down. A no-op for devices it never touched. */
+  private revertLean(deviceId: string): void {
+    try {
+      this.leanStore.revert(deviceId)
+    } catch (e) {
+      logger.warn(`Lean mode: could not restore ${deviceId}:`, (e as Error).message)
+    }
+  }
+
+  /**
+   * A device left lean by a run that ended without shutting it down — a crash, a lost relay, a
+   * tester quitting the simulator — is put back here if it is off, whatever `lean` says now: if Lean
+   * mode is on, the next boot through tapflow applies it again. One still running is left alone,
+   * and a udid that no longer exists (the host directory outlives `simctl delete`) is not ours to count.
+   */
+  private revertLeftoverLean(devices: Device[]): void {
+    let marked: string[]
+    try { marked = this.leanStore.applied() } catch { return }
+    if (marked.length === 0) return
+    const off = new Set(devices.filter((d) => d.status === 'shutdown').map((d) => d.id))
+    for (const udid of marked) if (off.has(udid)) this.revertLean(udid)
+  }
+
   private async handleDeviceShutdown(sessionId: string, deviceId: string, requestId?: string): Promise<void> {
     const state = this.deviceStates.get(sessionId)
     if (!state) return
@@ -882,6 +956,7 @@ export class IOSAgent implements DeviceAgent, NetworkControlCapability {
 
     try {
       await this.simctl.shutdown(deviceId)
+      this.revertLean(deviceId)
       // **After the shutdown lands, not with the teardown above.** Everything before this point is
       // the session's state, which is correct to drop the moment a shutdown is asked for. Ownership
       // is about the *device*, and a shutdown that throws leaves it running — forgetting it was ours
