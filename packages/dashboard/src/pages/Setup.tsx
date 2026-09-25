@@ -56,6 +56,9 @@ export function Setup() {
   }
 
   if (status.data?.initialized) return <Navigate to="/login" replace />
+  // Nothing until the relay answers, or a browser that may not initialize is shown the form first and
+  // can start typing into it. A failed check is not pending, so it still reaches the form.
+  if (status.isPending) return null
   // Only an explicit no hides the form. A failed check or a relay that does not report it keeps the
   // form, and `auth/init` still refuses on its own.
   const remote = status.data?.canInitialize === false
@@ -75,12 +78,16 @@ export function Setup() {
             {remote ? (
               <div className="flex flex-col gap-3">
                 <p id="setup-remote-command" className="text-sm text-muted-foreground">
-                  The admin account can only be created on the machine running the relay. Run this there:
+                  The admin account can only be created on the machine running the relay. Run this there, then reload this page:
                 </p>
                 {/* A field rather than text, so a keyboard user can select it. No copy button: this page
                     is not on localhost, and over plain HTTP the clipboard API is not available. */}
                 <Input readOnly value="tapflow admin init" aria-labelledby="setup-remote-command" onFocus={(e) => e.currentTarget.select()} className="font-mono text-xs" />
-                <p className="text-sm text-muted-foreground">Or open this dashboard on that machine at localhost.</p>
+                {/* Not "open it at localhost": through Docker's bridge gateway that is not local either, and
+                    the relay-only image has no CLI, so the variables are the only way in there. */}
+                <p className="text-sm text-muted-foreground">
+                  Running the relay in Docker? Set <code className="text-xs">TAPFLOW_ADMIN_EMAIL</code> and <code className="text-xs">TAPFLOW_ADMIN_PASSWORD</code> and restart it.
+                </p>
               </div>
             ) : (
               <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">

@@ -25,6 +25,18 @@
 
 ## 인증 (Auth)
 
+### `GET /api/v1/auth/status`
+
+릴레이에 관리자 계정이 있는지 알려 줍니다. 인증이 필요 없습니다.
+
+**응답 `200`**
+
+```json
+{ "initialized": false, "canInitialize": true }
+```
+
+`canInitialize`는 계정이 하나도 없고 이 요청으로 첫 계정을 만들 수 있을 때 `true`입니다. 첫 계정은 릴레이 호스트에서 온 요청만 만들 수 있습니다. 설정 페이지는 이 값을 보고 폼 대신 `tapflow admin init` 안내를 띄웁니다.
+
 ### `POST /api/v1/auth/init`
 
 최초 관리자 계정을 생성합니다. 계정이 하나도 없을 때만 사용 가능합니다.
@@ -41,7 +53,7 @@ Body (JSON):
 { "ok": true }
 ```
 
-계정이 이미 존재하면 `403 { "error": "Already initialized" }`를 반환합니다.
+계정이 이미 존재하면 `403 { "error": "Already initialized" }`를 반환합니다. 요청이 릴레이 호스트에서 오지 않았으면 `tapflow admin init`을 안내하는 오류와 함께 `403`을 반환합니다.
 
 
 ### `POST /api/v1/auth/login`

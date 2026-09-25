@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **The setup page tells a browser on another machine where to create the first account** ([#850](https://github.com/jo-duchan/tapflow/issues/850)), instead of showing a form it would refuse. Only the relay host can create it, and the refusal used to arrive after the email and both passwords were typed in. The page now says to run `tapflow admin init` on the relay host, or to open the dashboard there at localhost. `GET /api/v1/auth/status` gains a `canInitialize` field for it.
+- **The setup page tells a browser on another machine where to create the first account** ([#850](https://github.com/jo-duchan/tapflow/issues/850)), instead of showing a form it would refuse. Only the relay host can create it, and the refusal used to arrive after the email and both passwords were typed in. The page now says to run `tapflow admin init` on the relay host, or, for the Docker image, to set `TAPFLOW_ADMIN_EMAIL` and `TAPFLOW_ADMIN_PASSWORD`. `GET /api/v1/auth/status` gains a `canInitialize` field for it.
 
 - **Android screenshots of photo-heavy screens no longer fail with "stdout maxBuffer length exceeded"** ([#842](https://github.com/jo-duchan/tapflow/issues/842)). The agent captured them through Node's `execFile`, whose stdout buffer is 1 MiB unless set, so a 1080×2424 PNG with photos in it was rejected before it left the Mac while a flatter screen of the same size went through. `adb` output may now be 64 MiB, for the screenshot and for the `uiautomator dump` behind the accessibility tree.
 

@@ -73,7 +73,7 @@ CORS and CSRF allowlist, which a proxied deployment needs.
 
 ::: warning Create the first account before you open the browser
 The browser onboarding at `/setup` answers only requests from loopback, and a container reaches the
-relay through the bridge gateway — so the page shows no form and tells you to run `tapflow admin init`
+relay through the bridge gateway — so the page shows no form. It points to `tapflow admin init`
 on the host, which the relay-only image does not contain. Set `TAPFLOW_ADMIN_EMAIL` and
 `TAPFLOW_ADMIN_PASSWORD` and the relay creates the account as it starts. Both must be set — with only
 one the relay refuses to start — and the password must be at least 8 characters. On an install that

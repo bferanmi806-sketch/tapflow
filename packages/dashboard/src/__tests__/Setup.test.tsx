@@ -11,8 +11,10 @@ vi.mock('next-themes', () => ({
 
 import { Setup } from '@/src/pages/Setup'
 
-function renderSetup(initialPath = '/setup') {
-  return render(withQuery(
+// The page shows nothing until the status answer lands, so every case waits for it to settle into the
+// form or the redirect before acting.
+async function renderSetup(initialPath = '/setup') {
+  const view = render(withQuery(
     <MemoryRouter initialEntries={[initialPath]}>
       <Routes>
         <Route path="/setup" element={<Setup />} />
@@ -20,6 +22,8 @@ function renderSetup(initialPath = '/setup') {
       </Routes>
     </MemoryRouter>),
   )
+  await waitFor(() => expect(screen.queryByLabelText(/admin email/i) ?? screen.queryByText('login page')).not.toBeNull())
+  return view
 }
 
 describe('Setup 페이지', () => {
@@ -31,7 +35,7 @@ describe('Setup 페이지', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify({ initialized: false }), { status: 200 }),
     )
-    renderSetup()
+    await renderSetup()
     expect(screen.getByLabelText(/admin email/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
@@ -59,7 +63,7 @@ describe('Setup 페이지', () => {
     })
 
     it('빈 첫 필드에서 포커스가 빠져도 에러가 뜨지 않는다', async () => {
-      renderSetup()
+      await renderSetup()
       const email = screen.getByLabelText(/admin email/i)
       email.focus()
       await userEvent.tab()
@@ -71,7 +75,7 @@ describe('Setup 페이지', () => {
     it('무언가 입력했다가 지우고 떠나도 제출 전에는 조용하다', async () => {
       // The weaker half of the same rule, and the one a `dirtyFields` guard would have got wrong:
       // what decides is that the form has not been submitted, not whether the field was touched.
-      renderSetup()
+      await renderSetup()
       const email = screen.getByLabelText(/admin email/i)
       await userEvent.type(email, 'not-an-email')
       await userEvent.tab()
@@ -80,7 +84,7 @@ describe('Setup 페이지', () => {
     })
 
     it('제출하면 비로소 말한다', async () => {
-      renderSetup()
+      await renderSetup()
       await userEvent.click(screen.getByRole('button', { name: /create admin account/i }))
 
       expect(await screen.findByText('Enter a valid email')).toBeInTheDocument()
@@ -93,7 +97,7 @@ describe('Setup 페이지', () => {
       // nothing about what is wrong, so the input has to name the message. Before this the messages
       // were bare sibling `<p>`s with no id — which on-blur validation had been hiding, because an
       // error the user could already see had arrived long before any submit.
-      renderSetup()
+      await renderSetup()
       await userEvent.click(screen.getByRole('button', { name: /create admin account/i }))
 
       const email = screen.getByLabelText(/admin email/i)
@@ -106,7 +110,7 @@ describe('Setup 페이지', () => {
     it('유효한 필드는 무효로 표시되지 않는다', async () => {
       // The other half: `aria-invalid` has to come back off, or every field reads as broken once
       // one of them was.
-      renderSetup()
+      await renderSetup()
       await userEvent.type(screen.getByLabelText(/admin email/i), 'someone@example.com')
       await userEvent.click(screen.getByRole('button', { name: /create admin account/i }))
 
@@ -118,7 +122,7 @@ describe('Setup 페이지', () => {
     it('제출 뒤에는 고치는 즉시 사라진다', async () => {
       // `reValidateMode` defaults to `onChange`, so the live correction the old `onBlur` bought is
       // still there — it starts once the user has asked to submit rather than before.
-      renderSetup()
+      await renderSetup()
       await userEvent.click(screen.getByRole('button', { name: /create admin account/i }))
       await screen.findByText('Enter a valid email')
 
@@ -132,7 +136,7 @@ describe('Setup 페이지', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify({ initialized: true }), { status: 200 }),
     )
-    renderSetup()
+    await renderSetup()
     await waitFor(() => expect(screen.getByText('login page')).toBeInTheDocument())
   })
 
@@ -141,7 +145,7 @@ describe('Setup 페이지', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ initialized: false }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 201 }))
 
-    renderSetup()
+    await renderSetup()
     await userEvent.type(screen.getByLabelText(/admin email/i), 'admin@team.com')
     await userEvent.type(screen.getByLabelText(/^password$/i), 'securepass')
     await userEvent.type(screen.getByLabelText(/confirm password/i), 'securepass')
@@ -157,7 +161,7 @@ describe('Setup 페이지', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify({ initialized: false }), { status: 200 }),
     )
-    renderSetup()
+    await renderSetup()
     await userEvent.type(screen.getByLabelText(/admin email/i), 'admin@team.com')
     await userEvent.type(screen.getByLabelText(/^password$/i), 'password1')
     await userEvent.type(screen.getByLabelText(/confirm password/i), 'password2')
@@ -172,7 +176,7 @@ describe('Setup 페이지', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ initialized: false }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Already initialized' }), { status: 403 }))
 
-    renderSetup()
+    await renderSetup()
     await userEvent.type(screen.getByLabelText(/admin email/i), 'admin@team.com')
     await userEvent.type(screen.getByLabelText(/^password$/i), 'securepass')
     await userEvent.type(screen.getByLabelText(/confirm password/i), 'securepass')
@@ -192,7 +196,7 @@ describe('Setup 페이지', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ initialized: false }), { status: 200 }),
     )
-    renderSetup()
+    await renderSetup()
     const alert = screen.getByRole('alert')
     expect(alert).toBeInTheDocument()
     expect(alert).toHaveTextContent('')
