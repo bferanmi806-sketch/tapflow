@@ -86,7 +86,7 @@ export function Setup() {
                 {/* Not "open it at localhost": through Docker's bridge gateway that is not local either, and
                     the relay-only image has no CLI, so the variables are the only way in there. */}
                 <p className="text-sm text-muted-foreground">
-                  Running the relay in Docker? Set <code className="text-xs">TAPFLOW_ADMIN_EMAIL</code> and <code className="text-xs">TAPFLOW_ADMIN_PASSWORD</code> and restart it.
+                  Running the relay in Docker? Set <code className="text-xs">TAPFLOW_ADMIN_EMAIL</code> and <code className="text-xs">TAPFLOW_ADMIN_PASSWORD</code> on the container and recreate it, e.g. with <code className="text-xs">docker compose up -d</code>. A restart keeps the old environment.
                 </p>
               </div>
             ) : (
