@@ -148,6 +148,7 @@ import { isAudioSupported, launchMuteOnlyTap } from '@tapflowio/audiotap-helper'
 import type { ScrcpyControl } from '../scrcpy/ScrcpyControl'
 import type { ScrcpyFrame } from '../scrcpy/ScrcpyVideo'
 import type { AdbRunner } from '../adb'
+import { LEAN_MARKER_PATH, LEAN_PACKAGES } from '../LeanPackages'
 import { barrier, waitForOpen, waitForType, waitForTypeOrNull } from '@tapflowio/test-utils'
 import type { NetworkError, NetworkState, SessionJoined } from '@tapflowio/protocol'
 
@@ -336,6 +337,92 @@ describe('AndroidAgent', () => {
       browser.close()
     })
 
+  })
+
+  // ── Lean mode: bundled apps kept disabled, reconciled after every boot ──────────────────────
+  describe('Lean mode', () => {
+    let agent: AndroidAgent
+    let browser: WebSocket
+    afterEach(() => { agent?.disconnect(); browser?.close() })
+
+    /** A device whose package state and marker file live in memory, behind the real wrapper's methods. */
+    function withPackages(booted: boolean) {
+      const adb = mockAdb(booted)
+      const enabled = new Set(['android', ...LEAN_PACKAGES])
+      const disabled = new Set<string>()
+      let marker: string | null = null
+      vi.spyOn(adb, 'packageStates').mockImplementation(async () => ({ enabled: new Set(enabled), disabled: new Set(disabled) }))
+      vi.spyOn(adb, 'setPackageEnabled').mockImplementation(async (_s, pkg, on) => {
+        ;(on ? disabled : enabled).delete(pkg); (on ? enabled : disabled).add(pkg)
+      })
+      vi.spyOn(adb, 'readDeviceFile').mockImplementation(async () => marker)
+      vi.spyOn(adb, 'writeDeviceFile').mockImplementation(async (_s, _p, c) => { marker = c })
+      vi.spyOn(adb, 'removeDeviceFile').mockImplementation(async () => { marker = null })
+      return { adb, disabled }
+    }
+
+    async function boot(adb: AdbWrapper, lean: boolean) {
+      agent = new AndroidAgent({ lean }, adb)
+      await agent.connect(`ws://localhost:${port}`)
+      browser = new WebSocket(`ws://localhost:${port}`)
+      await waitForOpen(browser)
+      browser.send(JSON.stringify({ type: 'session:start', sessionId: agent.sessionId }))
+      await waitForType(browser, 'session:joined')
+      browser.send(JSON.stringify({ type: 'device:boot', requestId: 'rq-lean', sessionId: agent.sessionId, payload: { deviceId: 'avd:Pixel_8_API_34' } }))
+      await waitForType(browser, 'device:ready')
+    }
+
+    it('disables the apps on an emulator it launched', async () => {
+      const { adb, disabled } = withPackages(false)
+      await boot(adb, true)
+      await vi.waitFor(() => expect([...disabled].sort()).toEqual([...LEAN_PACKAGES].sort()))
+      expect(adb.writeDeviceFile).toHaveBeenCalledWith('emulator-5554', LEAN_MARKER_PATH, expect.any(String))
+    })
+
+    it('leaves an emulator it only attached to as it is', async () => {
+      // The twin of the case above: same device, only already running.
+      const { adb } = withPackages(true)
+      await boot(adb, true)
+      await new Promise((r) => setTimeout(r, 50))
+      expect(adb.setPackageEnabled).not.toHaveBeenCalled()
+      expect(adb.writeDeviceFile).not.toHaveBeenCalled()
+    })
+
+    it('with Lean mode off, asks for the marker and nothing else on a device it never touched', async () => {
+      const { adb } = withPackages(false)
+      await boot(adb, false)
+      await vi.waitFor(() => expect(adb.readDeviceFile).toHaveBeenCalled())
+      await new Promise((r) => setTimeout(r, 50))
+      expect(adb.packageStates).not.toHaveBeenCalled()
+      expect(adb.setPackageEnabled).not.toHaveBeenCalled()
+    })
+
+    it('logs a device it cannot reconcile and leaves it for the next boot', async () => {
+      const { adb } = withPackages(false)
+      vi.mocked(adb.packageStates).mockRejectedValue(new Error('device offline'))
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      await boot(adb, true)
+      await vi.waitFor(() => expect(warn).toHaveBeenCalledWith(expect.stringContaining('not reconciled'), expect.stringContaining('device offline')))
+      expect(adb.setPackageEnabled).not.toHaveBeenCalled()
+    })
+
+    it('stops writing once the device is shut down mid-reconcile', async () => {
+      // The twin is the first case in this block: same device, no shutdown, and the writes happen.
+      const { adb } = withPackages(false)
+      const real = vi.mocked(adb.packageStates).getMockImplementation()!
+      let release!: () => void
+      const held = new Promise<void>((r) => { release = r })
+      vi.mocked(adb.packageStates).mockImplementation(async (s) => { await held; return real(s) })
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      await boot(adb, true)
+      await vi.waitFor(() => expect(adb.packageStates).toHaveBeenCalled())
+      browser.send(JSON.stringify({ type: 'device:shutdown', requestId: 'rq-off', sessionId: agent.sessionId, payload: { deviceId: 'avd:Pixel_8_API_34' } }))
+      await waitForType(browser, 'device:shutdown-done')
+      release()
+      await new Promise((r) => setTimeout(r, 50))
+      expect(adb.writeDeviceFile).not.toHaveBeenCalled()
+      expect(adb.setPackageEnabled).not.toHaveBeenCalled()
+    })
   })
 
   // ── #607: network on/off, via airplane mode ────────────────────────────────────────────────

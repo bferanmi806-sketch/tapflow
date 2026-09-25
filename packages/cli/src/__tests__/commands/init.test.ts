@@ -10,6 +10,9 @@ vi.mock('@clack/prompts', () => ({
   cancel: vi.fn(),
 }))
 
+const adb = vi.hoisted(() => ({ found: false }))
+vi.mock('../../lib/doctor.js', () => ({ resolveAdb: () => (adb.found ? { path: '/usr/bin/adb', inPath: true } : null) }))
+
 import * as clack from '@clack/prompts'
 import { cmdInitConfig } from '../../commands/init.js'
 
@@ -32,6 +35,7 @@ describe('cmdInitConfig', () => {
   let tmpHome: string
 
   beforeEach(() => {
+    adb.found = false
     vi.resetAllMocks()
     vi.mocked(clack.isCancel).mockReturnValue(false)
     output = []
@@ -195,7 +199,16 @@ describe('cmdInitConfig', () => {
       expect(read().agent).toEqual({ lean: false })
     })
 
-    it('does not ask where there is no iOS simulator to make lean', async () => {
+    it('asks on Linux when adb is there, since Android emulators can be made lean', async () => {
+      setTTY(true)
+      vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
+      adb.found = true
+      mockSelect.mockResolvedValueOnce('none').mockResolvedValueOnce('standard').mockResolvedValueOnce('on')
+      await cmdInitConfig({})
+      expect(read().agent).toEqual({ lean: true })
+    })
+
+    it('does not ask where there is no device to make lean', async () => {
       setTTY(true)
       vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
       mockSelect.mockResolvedValueOnce('none').mockResolvedValueOnce('standard')

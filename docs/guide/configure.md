@@ -22,13 +22,13 @@ The command can create up to five things, all inside the install directory.
 
 Running `init` again keeps your configuration and refreshes only the tapflow section of `AGENTS.md`. Pass `--force` to write a fresh configuration.
 
-The interactive prompts then appear in order. You pick a tunnel first; the streaming and certificate prompts only show when you run on the LAN with no tunnel, and the Lean mode prompt only on a Mac.
+The interactive prompts then appear in order. You pick a tunnel first; the streaming and certificate prompts only show when you run on the LAN with no tunnel, and the Lean mode prompt only where there is a simulator or emulator to make lean.
 
 ```text
 1. Tunnel              None · Tailscale · rathole
 2. Streaming           Only when tunnel is None — Standard (HTTP) · Smooth (HTTPS)
 3. Certificate         Only when Smooth is chosen — DNS auto-issue · Existing cert
-4. Lean mode           Only on a Mac — Off · On
+4. Lean mode           On a Mac, or where adb is installed — Off · On
 ```
 
 ## 1. Pick a tunnel
@@ -73,14 +73,14 @@ If you turn on HTTPS, choose how the certificate is provided.
 
 When you choose DNS auto-issue, you select a provider and enter a domain, and a `.env` for the token is scaffolded in the data directory. The full reference for issuance modes and config keys is in [Configuration — HTTPS](/reference/configuration#https-secure-context).
 
-## 4. Lean mode (Mac only)
+## 4. Lean mode
 
-This decides whether the iOS simulators your agent boots run lighter.
+This decides whether the simulators and emulators your agent boots run lighter.
 
 | Choice | Meaning |
 |--------|---------|
 | **Off** | Simulators run every background service. This is the default. |
-| **On** | A fixed list of background services is turned off while tapflow runs the simulator. Measured on iOS 27, each simulator uses about a quarter less memory. |
+| **On** | On iOS, a fixed list of background services is turned off while tapflow runs the simulator; measured on iOS 27, each simulator uses about a quarter less memory. On Android, four bundled Google apps are kept disabled; measured on API 34, each emulator uses a little under a fifth less. |
 
 The answer is saved as `agent.lean` in `tapflow.config.json`, and you can change it there later. What turns off, what stays on and when it applies are listed in [Configuration — Lean mode](/reference/configuration#lean-mode-agent).
 

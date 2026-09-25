@@ -39,7 +39,7 @@ export async function runDoctorChecks(platform?: string, opts: { lean?: boolean 
   return {
     common: [checkNodeVersion(), await checkPort(4000)],
     ios: wantIos ? buildIosChecks(isMac, opts.lean ?? false) : null,
-    android: wantAndroid ? buildAndroidChecks(resolveAdb()) : null,
+    android: wantAndroid ? [...buildAndroidChecks(resolveAdb()), checkAndroidLeanMode(opts.lean ?? false)] : null,
   }
 }
 
@@ -503,16 +503,26 @@ function checkLeanMode(lean: boolean, simulators: Simulator[] | null): DoctorChe
     // An unreadable store directory still leaves this check able to say what the setting is.
   }
   const devices = `${count} device${count === 1 ? '' : 's'}`
-  if (lean) return { label: count > 0 ? `Lean mode: on (${devices} lean now)` : 'Lean mode: on', ok: true }
-  if (count === 0) return { label: 'Lean mode: off', ok: true }
+  if (lean) return { label: count > 0 ? `Lean mode (iOS): on (${devices} lean now)` : 'Lean mode (iOS): on', ok: true }
+  if (count === 0) return { label: 'Lean mode (iOS): off', ok: true }
   return {
-    label: `Lean mode: off (${devices} still lean)`,
+    label: `Lean mode (iOS): off (${devices} still lean)`,
     ok: false,
     warn: true,
     // Only shut-down devices are put back on connect, and one whose marker or store cannot be read is
     // left as it is — so this says what happens next without promising it has.
     detail: 'Left by a run that ended without shutting them down. An agent puts each one back when it connects and finds it shut down; its log says so if one cannot be.',
   }
+}
+
+/**
+ * The setting only: the record of which emulators are lean lives inside each emulator, where a
+ * doctor cannot read it without booting them.
+ */
+function checkAndroidLeanMode(lean: boolean): DoctorCheck {
+  return lean
+    ? { label: 'Lean mode (Android): on', ok: true }
+    : { label: 'Lean mode (Android): off', ok: true }
 }
 
 function checkNodeVersion(): DoctorCheck {

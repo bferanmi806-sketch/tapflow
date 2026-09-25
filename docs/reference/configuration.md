@@ -35,7 +35,7 @@ Paths inside the file are relative to the file itself, the way a `tsconfig.json`
 | `tls` | LAN HTTPS (secure context) settings, required for WebCodecs hardware decode. See the HTTPS section below. |
 | `smtp` | SMTP settings for sending invitation and password reset emails. |
 | `webhooks` | Outbound endpoints notified when a build's review status changes. Signing secrets are read from env vars named by `secretEnv`. See the Webhooks section below. |
-| `agent.lean` | Lean mode for the iOS simulators this machine's agent boots. Read by the agent, not the relay. Default `false`. See the Lean mode section below. |
+| `agent.lean` | Lean mode for the iOS simulators and Android emulators this machine's agent boots. Read by the agent, not the relay. Default `false`. See the Lean mode section below. |
 
 `smtp.from` defaults to `tapflow <smtp.user>` when `smtp.user` is set. Override it explicitly if you need a different sender address.
 
@@ -160,7 +160,7 @@ These variables are set on the **agent** process (`tapflow agent start` / `tapfl
 
 ## Lean mode (agent)
 
-With `agent.lean` set to `true`, the agent turns off a fixed list of background services on every iOS simulator it boots. Measured on iOS 27, a simulator then uses about a quarter less memory, roughly 0.5 GB, so a Mac holds more simulators before it starts swapping.
+With `agent.lean` set to `true`, the agent turns off a fixed list of background services on every iOS simulator it boots, and a few bundled apps on Android emulators (see below). Measured on iOS 27, a simulator then uses about a quarter less memory, roughly 0.5 GB, so a Mac holds more simulators before it starts swapping.
 
 ```json
 { "agent": { "lean": true } }
@@ -177,7 +177,20 @@ It only applies while tapflow runs the simulator:
 - If the agent stops without shutting a simulator down, that simulator stays lean while it keeps running, whoever opens it. Once it is shut down, the next agent to connect removes the setting.
 - `tapflow boot` starts a simulator without going through the agent, so it boots it as it is.
 
-It needs an iOS 18.5 or later runtime; other runtimes, tvOS and watchOS simulators are left alone. Android emulators are not covered yet. `tapflow doctor ios` shows whether Lean mode is on and how many simulators are lean right now.
+It needs an iOS 18.5 or later runtime; other runtimes, tvOS and watchOS simulators are left alone. `tapflow doctor ios` shows whether Lean mode is on and how many simulators are lean right now.
+
+### Android emulators
+
+On Android the agent disables four bundled Google apps: the Google app, YouTube, YouTube Music and Digital Wellbeing. They start on their own at boot. Measured on an API 34 emulator, the guest then takes about 350 MB less of the Mac's memory, just under a fifth.
+
+The emulator gives memory back to the Mac only when it exits, so the apps have to be disabled before a boot to save anything. That is why this works differently from iOS: the apps stay disabled for as long as Lean mode is on, and the saving starts from an emulator's second boot through tapflow.
+
+- The home screen loses the Google search bar, and the assistant is gone. An app that sends `ACTION_WEB_SEARCH` finds nothing to handle it. Voice input keeps working, because other apps provide it.
+- Photos, Messages, Gmail and Maps stay on, because apps open images, texts, mail and maps through them.
+- An emulator that is already running when a session asks for it is not made lean until its next boot through tapflow.
+- The apps are disabled in the emulator itself, so they stay disabled when you open it from Android Studio. While Lean mode is on, an app you re-enable by hand is disabled again the next time tapflow boots the emulator.
+- When Lean mode is turned off, the apps come back the next time tapflow boots that emulator. To restore them without tapflow, run `adb shell pm enable <package>` for each one, then `adb shell rm /data/local/tmp/tapflow-lean.json`.
+- `tapflow doctor android` shows whether Lean mode is on. Which emulators are lean is recorded inside each emulator, so doctor cannot count them.
 
 In a setup with several Macs, each Mac's `tapflow.config.json` decides for the agent on that Mac.
 

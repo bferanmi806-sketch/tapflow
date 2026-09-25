@@ -10,6 +10,8 @@ export function encodeAdbInputText(text: string): string {
   return text.replace(/[ %()<>|&;*\\"'`$#~]/g, (c) => (c === ' ' ? '%s' : `\\${c}`))
 }
 
+const NO_FILE = '__TAPFLOW_NO_FILE__'
+
 export class AdbWrapper {
   // avdId ("avd:<name>") → ADB serial ("emulator-5554")
   private readonly serialMap = new Map<string, string>()
@@ -307,6 +309,47 @@ export class AdbWrapper {
 
   async sendKeyEvent(serial: string, keyCode: string): Promise<void> {
     await this.runner.exec('-s', serial, 'shell', 'input', 'keyevent', keyCode)
+  }
+
+  /**
+   * Enabled and disabled package names, for Lean mode. Disabled is **every package minus the enabled
+   * ones**, not `-d`: a `-d` read that came back empty would say a disabled app is gone, and a
+   * missing app is one Lean mode stops tracking. Both reads must name `android`, or neither is trusted.
+   */
+  async packageStates(serial: string): Promise<{ enabled: Set<string>; disabled: Set<string> }> {
+    const list = async (...flag: string[]) => new Set(
+      (await this.runner.exec('-s', serial, 'shell', 'pm', 'list', 'packages', ...flag))
+        .split('\n').map((l) => l.trim()).filter((l) => l.startsWith('package:')).map((l) => l.slice('package:'.length)),
+    )
+    const all = await list()
+    const enabled = await list('-e')
+    if (!all.has('android') || !enabled.has('android')) throw new PlatformError('pm gave no usable package list yet')
+    return { enabled, disabled: new Set([...all].filter((p) => !enabled.has(p))) }
+  }
+
+  /** `pm` prints its errors with exit code 0, so "new state" in the output is what says it took. */
+  async setPackageEnabled(serial: string, pkg: string, enabled: boolean): Promise<void> {
+    const out = await this.runner.exec('-s', serial, 'shell', 'pm', enabled ? 'enable' : 'disable-user', '--user', '0', pkg)
+    if (!out.includes('new state')) throw new PlatformError(`pm ${enabled ? 'enable' : 'disable-user'} ${pkg} failed: ${out.trim() || 'no output'}`)
+  }
+
+  /** A file's contents, or `null` when it does not exist — told apart from an empty file. */
+  async readDeviceFile(serial: string, path: string): Promise<string | null> {
+    const out = await this.runner.exec('-s', serial, 'shell', `if [ -f ${path} ]; then cat ${path}; else echo ${NO_FILE}; fi`)
+    return out.trim() === NO_FILE ? null : out.replace(/\r?\n$/, '')
+  }
+
+  /**
+   * Written to a temp file, renamed into place and synced, so an `emu kill` right after cannot leave
+   * half a file or one still in the guest's page cache. Base64, so the content never meets the shell.
+   */
+  async writeDeviceFile(serial: string, path: string, content: string): Promise<void> {
+    const b64 = Buffer.from(content).toString('base64')
+    await this.runner.exec('-s', serial, 'shell', `echo ${b64} | base64 -d > ${path}.tmp && mv ${path}.tmp ${path} && sync`)
+  }
+
+  async removeDeviceFile(serial: string, path: string): Promise<void> {
+    await this.runner.exec('-s', serial, 'shell', `rm -f ${path} && sync`)
   }
 
   async shutdown(serial: string): Promise<void> {
