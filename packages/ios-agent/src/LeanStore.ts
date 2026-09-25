@@ -20,16 +20,22 @@ import { join } from 'path'
 export class LeanStore {
   constructor(private readonly root = '/private/var/tmp') {}
 
-  /** Disable `labels` on a shut-down device. Safe to repeat: the first apply's record is kept. */
+  /**
+   * Disable `labels` on a shut-down device. Safe to repeat: a label already recorded keeps its first
+   * record, and one the marker does not have yet — a newer list booting a device an older one marked —
+   * is recorded now, before it is overwritten.
+   */
   apply(udid: string, labels: readonly string[]): void {
     const dir = this.dir(udid)
     mkdirSync(dir, { recursive: true, mode: 0o700 })
     const entries = this.readStore(udid)
-    if (!existsSync(this.markerPath(udid))) {
-      const prior: Record<string, boolean | null> = {}
-      for (const label of labels) prior[label] = label in entries ? entries[label] : null
-      atomicWrite(this.markerPath(udid), JSON.stringify({ prior }, null, 2) + '\n')
-    }
+    const marked = existsSync(this.markerPath(udid))
+    const prior: Record<string, boolean | null> = marked
+      ? (JSON.parse(readFileSync(this.markerPath(udid), 'utf8')) as { prior: Record<string, boolean | null> }).prior
+      : {}
+    const missing = labels.filter((label) => !(label in prior))
+    for (const label of missing) prior[label] = label in entries ? entries[label] : null
+    if (!marked || missing.length > 0) atomicWrite(this.markerPath(udid), JSON.stringify({ prior }, null, 2) + '\n')
     for (const label of labels) entries[label] = true
     atomicWrite(this.storePath(udid), renderDisabledStore(entries))
   }

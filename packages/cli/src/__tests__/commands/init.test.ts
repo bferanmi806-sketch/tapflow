@@ -181,6 +181,14 @@ describe('cmdInitConfig', () => {
       expect(read().agent).toEqual({ lean: true })
     })
 
+    it('does not ask when --tunnel was given, which is the prompt-free way to init', async () => {
+      setTTY(true)
+      vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
+      await cmdInitConfig({ tunnel: 'tailscale' })
+      expect(mockSelect).not.toHaveBeenCalled()
+      expect(read().agent).toEqual({ lean: false })
+    })
+
     it('writes it off, so the key is there to find, when nobody was asked', async () => {
       setTTY(false)
       await cmdInitConfig({})

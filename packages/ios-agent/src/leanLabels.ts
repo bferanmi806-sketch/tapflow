@@ -27,7 +27,7 @@
  */
 
 /**
- * Background services no app under test asks for, selected label by label from simslim's categories —
+ * Background services apps rarely ask for, selected label by label from simslim's categories —
  * and **not** simslim's default, which disables everything and leaves keeping things to the user.
  *
  * Disabled: Siri itself and Apple Intelligence indexing; iCloud Keychain and backup; store extras;

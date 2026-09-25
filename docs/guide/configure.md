@@ -80,7 +80,7 @@ This decides whether the iOS simulators your agent boots run lighter.
 | Choice | Meaning |
 |--------|---------|
 | **Off** | Simulators run every background service. This is the default. |
-| **On** | Background services an app under test does not use are turned off while tapflow runs the simulator. Measured on iOS 27, each simulator uses about a quarter less memory. |
+| **On** | A fixed list of background services is turned off while tapflow runs the simulator. Measured on iOS 27, each simulator uses about a quarter less memory. |
 
 The answer is saved as `agent.lean` in `tapflow.config.json`, and you can change it there later. What turns off, what stays on and when it applies are listed in [Configuration — Lean mode](/reference/configuration#lean-mode-agent).
 

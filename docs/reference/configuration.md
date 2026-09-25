@@ -160,7 +160,7 @@ These variables are set on the **agent** process (`tapflow agent start` / `tapfl
 
 ## Lean mode (agent)
 
-With `agent.lean` set to `true`, the agent turns off background services an app under test does not use on every iOS simulator it boots. Measured on iOS 27, a simulator then uses about a quarter less memory, roughly 0.5 GB, so a Mac holds more simulators before it starts swapping.
+With `agent.lean` set to `true`, the agent turns off a fixed list of background services on every iOS simulator it boots. Measured on iOS 27, a simulator then uses about a quarter less memory, roughly 0.5 GB, so a Mac holds more simulators before it starts swapping.
 
 ```json
 { "agent": { "lean": true } }
@@ -168,7 +168,7 @@ With `agent.lean` set to `true`, the agent turns off background services an app 
 
 **What turns off:** Siri and Apple Intelligence background work, iCloud Keychain and backup, the Health app, fitness and HomeKit, photo analysis, Family Sharing and Screen Time, News, Maps sync and Tips, iMessage and FaceTime, AirDrop, Continuity, CarPlay, Watch and Find My, Safari bookmark sync, and telemetry.
 
-**What stays on:** anything an app under test uses or a tester sees on screen. That covers the wallpaper and widgets, dictation, speech and keyboard suggestions, Sign in with Apple, CloudKit and iCloud Drive, StoreKit, push and Wallet, HealthKit, the photo picker, Contacts and Calendar, Spotlight and Settings search, universal links, WeatherKit, MapKit, Game Center and CallKit. tapflow's own features, including streaming, input, the UI tree, the clipboard, audio, installs, deep links and the network control, were checked on a lean simulator.
+**What stays on:** the services apps commonly rely on and what a tester sees on screen. That covers the wallpaper and widgets, dictation, speech and keyboard suggestions, Sign in with Apple, CloudKit and iCloud Drive, StoreKit, push and Wallet, HealthKit, the photo picker, Contacts and Calendar, Spotlight and Settings search, universal links, WeatherKit, MapKit, Game Center and CallKit. The list is fixed rather than worked out from your app, so if an app under test needs a service from the list above, turn Lean mode off. tapflow's own features, including streaming, input, the UI tree, the clipboard, audio, installs, deep links and the network control, were checked on a lean simulator.
 
 It only applies while tapflow runs the simulator:
 

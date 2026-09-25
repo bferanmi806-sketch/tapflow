@@ -72,6 +72,16 @@ describe('revert', () => {
     expect(read()).toEqual({ 'com.apple.triald': false })
   })
 
+  it('records labels a later list adds, so they are put back too', () => {
+    // A device marked by one version and booted by a newer one whose list is longer: the new
+    // labels were not in the marker, and without this they stayed disabled after the revert.
+    seed({ 'com.apple.nanonewscd': false })
+    store.apply(UDID, LABELS.slice(0, 2))
+    store.apply(UDID, [...LABELS, 'com.apple.nanonewscd'])
+    store.revert(UDID)
+    expect(read()).toEqual({ 'com.apple.nanonewscd': false })
+  })
+
   it('leaves a device it never applied to exactly as it is', () => {
     // The twin of the case above: another tool (simslim) disabled these, and they are not ours to undo.
     seed({ 'com.apple.assistantd': true })

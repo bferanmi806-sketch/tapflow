@@ -284,8 +284,10 @@ export async function cmdInitConfig(opts: InitConfigOptions): Promise<void> {
     tls = await promptTls()
   }
 
-  // Lean mode acts on iOS simulators only, so a machine that cannot run them is not asked.
-  const lean = process.platform === 'darwin' && isInteractive() ? await promptLean() : false
+  // Lean mode acts on iOS simulators only, so a machine that cannot run them is not asked. Nor is a
+  // `--tunnel` run, which the guide gives as the way to init without prompts — the HTTPS prompt is
+  // skipped there for the same reason.
+  const lean = process.platform === 'darwin' && isInteractive() && !opts.tunnel ? await promptLean() : false
 
   const dataDir = dataDirFor(install, home)
   const absoluteDataDir = path.join(install.dir, dataDir)
