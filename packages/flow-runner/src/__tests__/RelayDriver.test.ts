@@ -94,4 +94,59 @@ describe('RelayDriver failure-kind mapping (#543)', () => {
     })
     expect(result.failureKind).toBe('environment')
   })
+
+  // Regression pin for #825: no status split. Any RelayHttpError escaping the
+  // query retry loop is environmental — the relay's ui-tree/screenshot
+  // statuses (401/403 token, 404 session gone, 409 device not booted, 502/504
+  // agent away or silent, 0 network) never come from the app under test.
+  const ESCAPING_HTTP_CASES = [
+    { label: 'network failure', status: 0, permanent: false },
+    { label: 'unauthorized', status: 401, permanent: false },
+    { label: 'forbidden', status: 403, permanent: false },
+    { label: 'session not found', status: 404, permanent: false },
+    { label: 'device not booted', status: 409, permanent: false },
+    { label: 'agent away', status: 502, permanent: false },
+    { label: 'agent silent', status: 504, permanent: false },
+    { label: 'invalid response shape', status: 200, permanent: true },
+    { label: 'invalid JSON', status: 200, permanent: true },
+  ]
+
+  it.each(ESCAPING_HTTP_CASES)('RelayHttpError escaping the query retry loop stays environmental ($label, status $status)', async ({ label, status, permanent }) => {
+    const cause = new Error('underlying transport detail')
+    const original = new RelayHttpError(`ui-tree query failed: ${label}`, status, { cause }, permanent)
+    const driver = driverWith({ queryUITree: vi.fn(async (): Promise<never> => { throw original }) })
+    const err = await driver.queryUITree().catch((e: unknown) => e)
+    expect(err).toBe(original)
+    expect(isEnvironmentStepFailure(err)).toBe(true)
+    expect((err as RelayHttpError).status).toBe(status)
+    expect((err as RelayHttpError).permanent).toBe(permanent)
+    expect((err as RelayHttpError).cause).toBe(cause)
+    expect((err as Error).message).toBe(original.message)
+  })
+
+  it.each(ESCAPING_HTTP_CASES)('a $label RelayHttpError (status $status) failing the step stays environmental end to end', async ({ label, status, permanent }) => {
+    const original = new RelayHttpError(`ui-tree query failed: ${label}`, status, { cause: new Error(label) }, permanent)
+    const queryUITree = vi.fn(async (): Promise<never> => { throw original })
+    const client = {
+      queryUITree,
+      screenshot: vi.fn(async () => Buffer.from('PNG')),
+    } as unknown as RelayClient
+    const result = await runFlow(parseFlow('steps:\n  - assertVisible: "OK"\n', 'test.yaml'), new RelayDriver(client, 's1'), {
+      defaultTimeoutMs: 20,
+      pollIntervalMs: 1,
+    })
+    expect(result.status).toBe('failed')
+    expect(result.failureKind).toBe('environment')
+    expect(result.failureMessage).toContain(label)
+    // A RelayHttpError fails the step at once, permanent or not: the engine only retries TransientQueryError.
+    expect(queryUITree).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not mark a transient query failure as environmental at the driver level', async () => {
+    const original = new TransientQueryError('agent blip')
+    const driver = driverWith({ queryUITree: vi.fn(async (): Promise<never> => { throw original }) })
+    const err = await driver.queryUITree().catch((e: unknown) => e)
+    expect(err).toBe(original)
+    expect(isEnvironmentStepFailure(err)).toBe(false)
+  })
 })

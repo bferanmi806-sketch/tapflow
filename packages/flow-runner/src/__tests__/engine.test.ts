@@ -381,3 +381,121 @@ steps:
     await expect(runFlow(flowOf('steps:\n  - openUrl: "app://x"\n'), driver, { defaultTimeoutMs: 0.4 })).rejects.toThrow(/at least 1ms/)
   })
 })
+
+// Deadline classification (#825): queryDeadlineFailure returns environment
+// when no tree was ever seen, product once one was — across every poll loop
+// that keeps its own sawTree state (resolveOne, waitVisible, waitNotVisible).
+// Small real timeouts keep these deterministic: the loop can only end at the
+// deadline with lastError set, so no timing decides the kind.
+describe('query deadline classification', () => {
+  const ABORT = 'query aborted at deadline'
+  const QUERY_TIMEOUT = 'ui-tree query timed out'
+
+  it('tapOn whose query aborts on every poll, with no earlier tree, is environmental', async () => {
+    const driver = fakeDriver([[]])
+    driver.queryUITree = vi.fn(async (): Promise<never> => { throw new TransientQueryError(ABORT) })
+    const result = await runFlow(flowOf('steps:\n  - tapOn: "OK"\n'), driver, OPTS)
+    expect(result.status).toBe('failed')
+    expect(result.failureKind).toBe('environment')
+    expect(result.failureMessage).toContain(`last query error: ${ABORT}`)
+  })
+
+  it('assertVisible whose query aborts on every poll, with no earlier tree, is environmental', async () => {
+    const driver = fakeDriver([[]])
+    driver.queryUITree = vi.fn(async (): Promise<never> => { throw new TransientQueryError(ABORT) })
+    const result = await runFlow(flowOf('steps:\n  - assertVisible: "OK"\n'), driver, OPTS)
+    expect(result.status).toBe('failed')
+    expect(result.failureKind).toBe('environment')
+    expect(result.failureMessage).toContain(`last query error: ${ABORT}`)
+  })
+
+  it('assertNotVisible whose query aborts on every poll, with no earlier tree, is environmental', async () => {
+    const driver = fakeDriver([[]])
+    driver.queryUITree = vi.fn(async (): Promise<never> => { throw new TransientQueryError(ABORT) })
+    const result = await runFlow(flowOf('steps:\n  - assertNotVisible: "OK"\n'), driver, OPTS)
+    expect(result.status).toBe('failed')
+    expect(result.failureKind).toBe('environment')
+    expect(result.failureMessage).toContain(`last query error: ${ABORT}`)
+  })
+
+  it('tapOn whose query times out on every poll, with no earlier tree, is environmental', async () => {
+    const driver = fakeDriver([[]])
+    driver.queryUITree = vi.fn(async (): Promise<never> => { throw new TransientQueryError(QUERY_TIMEOUT) })
+    const result = await runFlow(flowOf('steps:\n  - tapOn: "OK"\n'), driver, OPTS)
+    expect(result.status).toBe('failed')
+    expect(result.failureKind).toBe('environment')
+    expect(result.failureMessage).toContain(`last query error: ${QUERY_TIMEOUT}`)
+  })
+
+  it('tapOn that aborts after an earlier non-matching tree stays product', async () => {
+    const driver = fakeDriver([[]])
+    let n = 0
+    driver.queryUITree = vi.fn(async () => {
+      if (n++ === 0) return [] // a tree was seen; the element genuinely never matched
+      throw new TransientQueryError(ABORT)
+    })
+    const result = await runFlow(flowOf('steps:\n  - tapOn: "OK"\n'), driver, OPTS)
+    expect(result.status).toBe('failed')
+    expect(result.failureKind).toBe('product')
+    expect(result.failureMessage).toContain('no element matched')
+  })
+
+  it('assertVisible that times out after an earlier non-matching tree stays product', async () => {
+    const driver = fakeDriver([[]])
+    let n = 0
+    driver.queryUITree = vi.fn(async () => {
+      if (n++ === 0) return []
+      throw new TransientQueryError(QUERY_TIMEOUT)
+    })
+    const result = await runFlow(flowOf('steps:\n  - assertVisible: "OK"\n'), driver, OPTS)
+    expect(result.status).toBe('failed')
+    expect(result.failureKind).toBe('product')
+    expect(result.failureMessage).toContain('no element matched')
+  })
+
+  it('assertNotVisible that aborts after an earlier tree showing the element stays product', async () => {
+    const driver = fakeDriver([[]])
+    let n = 0
+    const tree = [el({ label: 'OK' })]
+    driver.queryUITree = vi.fn(async () => {
+      if (n++ === 0) return tree // the element is still visible; the abort cannot confirm it gone
+      throw new TransientQueryError(ABORT)
+    })
+    const result = await runFlow(flowOf('steps:\n  - assertNotVisible: "OK"\n'), driver, OPTS)
+    expect(result.status).toBe('failed')
+    expect(result.failureKind).toBe('product')
+    expect(result.failureMessage).toContain('still visible')
+  })
+})
+
+// Evidence collection (#825): captureFailureScreenshot swallows its own
+// failure, and failureKind is set before capture runs — so a rejecting
+// screenshot cannot reclassify the step. Pins both kinds.
+describe('rejected failure screenshot preserves classification', () => {
+  it('leaves an environmental failureKind, message and failed step unchanged', async () => {
+    const driver = fakeDriver([[el({ label: 'x' })]])
+    driver.tap = vi.fn(async (): Promise<void> => { throw new EnvironmentStepError('relay connection closed') })
+    driver.screenshot = vi.fn(async (): Promise<Buffer> => { throw new Error('screenshot backend down') })
+    const result = await runFlow(flowOf('steps:\n  - tapOn: "x"\n'), driver, OPTS)
+    expect(result.status).toBe('failed')
+    expect(result.failureKind).toBe('environment')
+    expect(result.failureMessage).toContain('relay connection closed')
+    expect(result.failureMessage).not.toContain('screenshot backend down')
+    expect(result.steps[0]).toMatchObject({ status: 'failed' })
+    expect(result.steps[0]?.message).toContain('relay connection closed')
+    expect(result.failureScreenshot).toBeUndefined()
+  })
+
+  it('leaves a product failureKind, message and failed step unchanged', async () => {
+    const driver = fakeDriver([[]])
+    driver.screenshot = vi.fn(async (): Promise<Buffer> => { throw new Error('screenshot backend down') })
+    const result = await runFlow(flowOf('steps:\n  - tapOn: "OK"\n'), driver, OPTS)
+    expect(result.status).toBe('failed')
+    expect(result.failureKind).toBe('product')
+    expect(result.failureMessage).toContain('no element matched')
+    expect(result.failureMessage).not.toContain('screenshot backend down')
+    expect(result.steps[0]).toMatchObject({ status: 'failed' })
+    expect(result.steps[0]?.message).toContain('no element matched')
+    expect(result.failureScreenshot).toBeUndefined()
+  })
+})
