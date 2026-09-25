@@ -138,7 +138,7 @@ describe('RelayDriver failure-kind mapping (#543)', () => {
     expect(result.status).toBe('failed')
     expect(result.failureKind).toBe('environment')
     expect(result.failureMessage).toContain(label)
-    // Permanent errors fail the step at once: the engine only retries TransientQueryError.
+    // A RelayHttpError fails the step at once, permanent or not: the engine only retries TransientQueryError.
     expect(queryUITree).toHaveBeenCalledTimes(1)
   })
 
