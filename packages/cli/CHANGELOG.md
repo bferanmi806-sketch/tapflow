@@ -1,5 +1,48 @@
 # tapflow
 
+## 0.24.0
+
+### Minor Changes
+
+- bcc7c8e: Lean mode on Android emulators. With `agent.lean` on, the agent keeps four bundled Google apps disabled — the Google app, YouTube, YouTube Music and Digital Wellbeing — which start on their own at boot. Measured on an API 34 emulator, the guest takes about 350 MB, just under a fifth, less of the Mac's memory. The emulator returns memory only when it exits, so the apps stay disabled while Lean mode is on, and the saving starts from an emulator's second boot through tapflow; turning Lean mode off brings them back at the next boot. Photos, Messages, Gmail and Maps stay on because apps open images, texts, mail and maps through them. An emulator that is already running when a session asks for it is left as it is. `tapflow init` now asks wherever adb is installed, and `tapflow doctor` shows the setting per platform.
+- 2700746: Lean mode for iOS simulators. With `agent.lean: true` in `tapflow.config.json` (or `TAPFLOW_LEAN=on`), the agent turns off a fixed list of background services — Siri and Apple Intelligence background work, iCloud Keychain and backup, Health app and HomeKit, photo analysis, Screen Time, iMessage and FaceTime, Continuity, telemetry and similar — on each simulator it boots, and puts them back when it shuts the simulator down. Measured on iOS 27, a simulator uses about a quarter less memory. Wallpaper, widgets and the services apps commonly call (push, StoreKit, CloudKit, HealthKit, the photo picker, universal links and others) stay on; an app that needs one on the list should run with Lean mode off. `tapflow init` asks on a Mac (default off) and `tapflow doctor ios` reports it. iOS 18.5 or later. Android emulators get their own Lean mode in this release: four bundled Google apps kept disabled.
+- 5407be5: **`tapflow migrate` runs every migration an install still needs.** It checks each one, lists what applies, asks once in a terminal and runs without asking elsewhere, and stops at the first failure with exit 1. Today that is `data-dir`, when the install has a `.tapflow-data/` with data in it, and `net-filter`, when the iOS network filter is installed but out of date or not filtering. A Mac that never installed the filter is left alone. `tapflow migrate data-dir` and `tapflow migrate net-filter` work as before.
+
+  **Builds still install after their data directory moves** ([#836](https://github.com/jo-duchan/tapflow/issues/836)). The relay stored each build's full path, so after `tapflow migrate data-dir` every build uploaded before it failed to install with "cannot read this build file", and expired ones were removed from the list while their files stayed on disk. The relay now finds the file in its current `uploads/builds/` first and falls back to the stored path.
+
+  `tapflow migrate data-dir` refuses while something is listening on the relay's port, since a running relay would put later uploads back into `.tapflow-data/`. It also rewrites `tapflow.config.json` before the move and puts it back if the move fails, where a config it could not write used to leave the data moved and the config pointing at the old directory.
+
+- 9f3a141: **tapflow keeps one install per machine, in `~/.tapflow`.** `tapflow init` writes the configuration there instead of the directory you happened to be standing in, and every command finds the same install: `TAPFLOW_HOME` when it is set, the current directory when it already is an install, and `~/.tapflow` otherwise. `tapflow start` and `tapflow relay start` print the install directory, the configuration file and the data directory they resolved. Existing installs keep running where they are, and nothing moves.
+
+  `init` also writes an `AGENTS.md` — a tapflow section between `<!-- tapflow:begin -->` markers, leaving anything you wrote outside them alone — and, when the directory is tapflow's own, a `CLAUDE.md` containing `@AGENTS.md`. A coding agent opened in the install directory then answers tapflow questions from the documentation, with the configuration and `tapflow doctor` in reach. Running `init` again keeps the configuration and refreshes only that section.
+
+  Every CLI command used to leave a `jwt-secret` file in whatever directory it ran in, including `tapflow --version`: the relay created it when its configuration module loaded, and the CLI loads every command at startup. The relay creates it when it starts now.
+
+### Patch Changes
+
+- e03c9da: `tapflow flow run` now exits 2 when every failed flow failed for environmental reasons (relay, agent or session level: a refused input with an environmental reason, a session lost to an agent restart, a dropped relay connection). Those used to reach CI as exit 1, reading as product regressions on the dashboards that rely on the 1-vs-2 distinction. Selector, assertion and other product failures still exit 1, successful runs still exit 0, and a run with both kinds keeps exit 1 so a real regression is never masked by a blip. The engine carries the kind on the flow result, so consumers never branch on prose; `run_flow` (MCP) now also returns `failureKind` and classifies input refusals the same way as the CLI. Fractional `durationMs` values (e.g. 250.5) stay valid as on 0.23.0.
+- Updated dependencies [a5630d8]
+- Updated dependencies [0a29931]
+- Updated dependencies [75660db]
+- Updated dependencies [ad39cd2]
+- Updated dependencies [eb6fb90]
+- Updated dependencies [e03c9da]
+- Updated dependencies [2a96beb]
+- Updated dependencies [6b71a1d]
+- Updated dependencies [bcc7c8e]
+- Updated dependencies [2700746]
+- Updated dependencies [5407be5]
+- Updated dependencies [2f66f31]
+- Updated dependencies [96bd914]
+- Updated dependencies [cc4676d]
+- Updated dependencies [9f3a141]
+- Updated dependencies [adc07d2]
+  - @tapflowio/android-agent@0.24.0
+  - @tapflowio/relay@0.24.0
+  - @tapflowio/flow-runner@0.24.0
+  - @tapflowio/agent-core@0.24.0
+  - @tapflowio/ios-agent@0.24.0
+
 ## 0.23.0
 
 ### Minor Changes
