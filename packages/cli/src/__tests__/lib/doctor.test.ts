@@ -553,21 +553,29 @@ describe('Lean mode', () => {
   afterEach(() => vi.restoreAllMocks())
 
   const leanCheck = async (on: boolean) =>
-    (await runDoctorChecks('ios', { lean: on })).ios?.find((c) => c.label.startsWith('Lean mode'))
+    (await runDoctorChecks('ios', { lean: on })).ios?.find((c) => c.label.startsWith('Lean mode (iOS)'))
 
   it('says it is on, and how many devices are lean right now', async () => {
     lean.applied = ['AAA']
-    expect(await leanCheck(true)).toMatchObject({ label: 'Lean mode: on (1 device lean now)', ok: true })
+    expect(await leanCheck(true)).toMatchObject({ label: 'Lean mode (iOS): on (1 device lean now)', ok: true })
   })
 
   it('does not count a device that no longer exists', async () => {
     // The host directory outlives `simctl delete`, so its marker does too.
     lean.applied = ['AAA', 'GONE']
-    expect((await leanCheck(true))?.label).toBe('Lean mode: on (1 device lean now)')
+    expect((await leanCheck(true))?.label).toBe('Lean mode (iOS): on (1 device lean now)')
   })
 
   it('says it is off', async () => {
-    expect(await leanCheck(false)).toMatchObject({ label: 'Lean mode: off', ok: true })
+    expect(await leanCheck(false)).toMatchObject({ label: 'Lean mode (iOS): off', ok: true })
+  })
+
+  it('reports the Android setting on its own line', async () => {
+    const r = await runDoctorChecks(undefined, { lean: true })
+    expect(r.android?.find((c) => c.label.startsWith('Lean mode'))?.label).toBe('Lean mode (Android): on')
+    expect(r.ios?.filter((c) => c.label.startsWith('Lean mode'))).toHaveLength(1)
+    const off = await runDoctorChecks(undefined, { lean: false })
+    expect(off.android?.find((c) => c.label.startsWith('Lean mode'))?.label).toBe('Lean mode (Android): off')
   })
 
   it('asks simctl for the device list once, not once per check', async () => {
@@ -578,7 +586,7 @@ describe('Lean mode', () => {
   it('says when it is off but a device is still lean, and when that clears', async () => {
     lean.applied = ['BBB']
     const check = await leanCheck(false)
-    expect(check?.label).toBe('Lean mode: off (1 device still lean)')
+    expect(check?.label).toBe('Lean mode (iOS): off (1 device still lean)')
     expect(check?.detail).toMatch(/puts each one back when it connects and finds it shut down/)
   })
 })

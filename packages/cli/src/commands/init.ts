@@ -5,6 +5,7 @@ import { select, text, isCancel, cancel } from '@clack/prompts'
 import { dnsProviders, resolveInstallDir, resolveDefaultDataDir, OWN_DATA_DIR, UNIFIED_DATA_DIR, type InstallDir } from '@tapflowio/relay'
 import { banner, warn } from '../lib/print.js'
 import { isInteractive } from '../lib/interactive.js'
+import { resolveAdb } from '../lib/doctor.js'
 import { scaffoldAgentDocs, isTapflowOwned } from '../lib/agentDocs.js'
 
 export interface InitConfigOptions {
@@ -145,10 +146,10 @@ async function promptTunnel(): Promise<TunnelConfig | null> {
 // app that does need one would fail in a way that looks like its own bug.
 async function promptLean(): Promise<boolean> {
   const answer = await select({
-    message: 'Lean mode (iOS simulators)',
+    message: 'Lean mode (simulators and emulators)',
     options: [
       { value: 'off', label: 'Off', hint: 'simulators run every background service' },
-      { value: 'on', label: 'On', hint: 'about a quarter less memory per simulator; Siri and background sync off' },
+      { value: 'on', label: 'On', hint: 'less memory per device; background services and a few bundled apps off' },
     ],
   })
   if (isCancel(answer)) { cancel('Cancelled.'); process.exit(0) }
@@ -284,10 +285,11 @@ export async function cmdInitConfig(opts: InitConfigOptions): Promise<void> {
     tls = await promptTls()
   }
 
-  // Lean mode acts on iOS simulators only, so a machine that cannot run them is not asked. Nor is a
-  // `--tunnel` run, which the guide gives as the way to init without prompts — the HTTPS prompt is
-  // skipped there for the same reason.
-  const lean = process.platform === 'darwin' && isInteractive() && !opts.tunnel ? await promptLean() : false
+  // Asked where there is a device to make lean: iOS simulators on a Mac, Android emulators wherever
+  // adb is. Not on a `--tunnel` run, which the guide gives as the way to init without prompts — the
+  // HTTPS prompt is skipped there for the same reason.
+  const hasDevices = process.platform === 'darwin' || resolveAdb() !== null
+  const lean = hasDevices && isInteractive() && !opts.tunnel ? await promptLean() : false
 
   const dataDir = dataDirFor(install, home)
   const absoluteDataDir = path.join(install.dir, dataDir)

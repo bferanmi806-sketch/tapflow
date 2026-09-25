@@ -54,6 +54,7 @@ import type { SkinRotation } from './emulator/EmulatorGrpcClient.js'
 import type { DisplayMetrics } from './displayMetrics.js'
 import { bootPostureId, parseCurrentPosture, parsePostures } from './postures.js'
 import { EmulatorVideo } from './emulator/EmulatorVideo.js'
+import { LEAN_MARKER_PATH, reconcileLean, type LeanDevice } from './LeanPackages.js'
 
 const logger = createLogger('android-agent')
 
@@ -353,6 +354,8 @@ export interface AndroidAgentOptions {
   token?: string
   /** Handshake(연결~agent:registered) 타임아웃 ms. 기본 10초, 테스트용 주입 가능. */
   handshakeTimeoutMs?: number
+  /** Lean mode (`agent.lean`): keep bundled Google apps nobody testing needs disabled. See `LeanPackages`. */
+  lean?: boolean
 }
 
 // Everything inside the per-device clipboard section must be bounded, or one stuck call wedges
@@ -426,6 +429,7 @@ export class AndroidAgent implements DeviceAgent, NetworkControlCapability {
   private readonly reconnectDelays: number[]
   private readonly token?: string
   private readonly handshakeTimeoutMs: number
+  private readonly lean: boolean
 
   constructor(options: AndroidAgentOptions = {}, adb?: AdbWrapper) {
     this.adb = adb ?? new AdbWrapper()
@@ -433,6 +437,7 @@ export class AndroidAgent implements DeviceAgent, NetworkControlCapability {
     this.deviceFilter = options.deviceFilter
     this.token = options.token
     this.handshakeTimeoutMs = options.handshakeTimeoutMs ?? 10_000
+    this.lean = options.lean ?? false
     this.reconnectDelays = options.reconnectDelays ?? [1000, 2000, 4000, 8000, 16000, 30000]
     // No-op under vitest so the suite never spawns real `caffeinate` processes.
     this.sleepBlocker = options.sleepBlocker ?? (process.env.VITEST ? { acquire() {}, release() {} } : createSleepBlocker())
@@ -1698,6 +1703,8 @@ export class AndroidAgent implements DeviceAgent, NetworkControlCapability {
 
       // `|| fullErase`: the branch above left the device down on purpose, and the reading in
       // `target` predates it.
+      // Whether this call started the emulator. Lean mode is applied only then; see `reconcileLean`.
+      let launched = false
       if (target.status !== 'booted' || fullErase) {
         // One unique gRPC port per emulator (undefined when forced to scrcpy → no `-grpc`).
         const grpcPort = this.forceScrcpy() ? undefined : await this.pickFreeGrpcPort()
@@ -1714,6 +1721,7 @@ export class AndroidAgent implements DeviceAgent, NetworkControlCapability {
           if (seq !== state.bootSeq) { this.abandonBoot(state, seq, sessionId, requestId); return }
           this.adb.setSerial(avdId, serial)
           this.ownedDevices.add(avdId)
+          launched = true
         } finally {
           // The emulator now holds the port (or boot failed) — drop the reservation either way.
           if (grpcPort !== undefined) this.pendingGrpcPorts.delete(grpcPort)
@@ -1749,6 +1757,9 @@ export class AndroidAgent implements DeviceAgent, NetworkControlCapability {
       // The report that follows is the first of the three unsolicited producers the protocol names.
       // Without it a viewer opening a session has no idea whether this device is on the network.
       void this.resetNetworkForSession(sessionId, state, seq)
+      // At boot for the same reason, and after `device:ready` because it is never the boot's job:
+      // a device that cannot be reconciled is logged and tried again next boot.
+      void this.reconcileLeanForSession(sessionId, state, seq, launched)
     } catch (e) {
       if (seq !== state.bootSeq) { this.abandonBoot(state, seq, sessionId, requestId); return }
       const message = e instanceof Error ? e.message : String(e)
@@ -1831,6 +1842,28 @@ export class AndroidAgent implements DeviceAgent, NetworkControlCapability {
     } catch (e) {
       logger.warn('airplane mode read failed:', (e as Error).message)
       return { offline: lastKnownOffline, available: false, reason: 'state-unconfirmed' }
+    }
+  }
+
+  private async reconcileLeanForSession(sessionId: string, state: DeviceState, seq: number, launched: boolean): Promise<void> {
+    const serial = this.serialFor(sessionId)
+    if (!serial) return
+    const adb = this.adb
+    // Every write rechecks the boot: a shutdown or a newer boot arriving mid-way stops it here, and
+    // the next boot finishes the job from the marker.
+    const live = () => { if (seq !== state.bootSeq) throw new Error('the boot was superseded') }
+    const device: LeanDevice = {
+      packages: () => adb.packageStates(serial),
+      setEnabled: async (pkg, enabled) => { live(); await adb.setPackageEnabled(serial, pkg, enabled) },
+      readMarker: () => adb.readDeviceFile(serial, LEAN_MARKER_PATH),
+      writeMarker: async (content) => { live(); await adb.writeDeviceFile(serial, LEAN_MARKER_PATH, content) },
+      deleteMarker: async () => { live(); await adb.removeDeviceFile(serial, LEAN_MARKER_PATH) },
+    }
+    try {
+      if (seq !== state.bootSeq) return
+      logger.info(await reconcileLean(device, { lean: this.lean, launched }))
+    } catch (e) {
+      logger.warn('Lean mode: not reconciled this boot, will try again at the next:', (e as Error).message)
     }
   }
 

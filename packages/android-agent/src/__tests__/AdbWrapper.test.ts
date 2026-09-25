@@ -412,4 +412,61 @@ describe('AdbWrapper', () => {
         .rejects.toThrow(/refused/)
     })
   })
+
+  describe('Lean mode commands', () => {
+    const recorder = (answers: Record<string, string> = {}) => {
+      const calls: string[] = []
+      const runner = {
+        exec: vi.fn(async (...args: string[]) => {
+          const cmd = args.slice(3).join(' ')
+          calls.push(cmd)
+          for (const [k, v] of Object.entries(answers)) if (cmd.includes(k)) return v
+          return ''
+        }),
+        execBinary: vi.fn(), listAvds: vi.fn(),
+      }
+      return { calls, adb: new AdbWrapper(runner as never) }
+    }
+
+    it('reads disabled packages as every package minus the enabled ones', async () => {
+      const { adb } = recorder({
+        'packages -e': 'package:android\r\npackage:com.google.android.youtube\r\n',
+        'list packages': 'package:android\npackage:com.google.android.youtube\npackage:com.google.android.apps.wellbeing\n',
+      })
+      const s = await adb.packageStates('emulator-5554')
+      expect([...s.enabled]).toEqual(['android', 'com.google.android.youtube'])
+      expect([...s.disabled]).toEqual(['com.google.android.apps.wellbeing'])
+    })
+
+    it('refuses a package list that cannot be real', async () => {
+      // An empty answer right after boot would otherwise read as "nothing is installed".
+      const { adb } = recorder({ 'packages -e': 'package:android\n' })
+      await expect(adb.packageStates('emulator-5554')).rejects.toThrow(/package list/)
+    })
+
+    it('disables for user 0 and enables, and refuses a change pm did not report', async () => {
+      const { adb, calls } = recorder({ 'disable-user': 'Package x new state: disabled-user', 'enable --user': 'Package x new state: enabled' })
+      await adb.setPackageEnabled('emulator-5554', 'x', false)
+      await adb.setPackageEnabled('emulator-5554', 'x', true)
+      expect(calls).toEqual(['pm disable-user --user 0 x', 'pm enable --user 0 x'])
+      // pm prints an error with exit 0 for an unknown package, like `pm clear`.
+      const quiet = recorder()
+      await expect(quiet.adb.setPackageEnabled('emulator-5554', 'x', false)).rejects.toThrow(/x/)
+    })
+
+    it('reads a device file, and tells a missing one from an empty one', async () => {
+      const none = recorder({ 'cat': '__TAPFLOW_NO_FILE__\n' })
+      expect(await none.adb.readDeviceFile('emulator-5554', '/data/local/tmp/f')).toBeNull()
+      const some = recorder({ 'cat': '{"a":1}' })
+      expect(await some.adb.readDeviceFile('emulator-5554', '/data/local/tmp/f')).toBe('{"a":1}')
+    })
+
+    it('writes through a temp file, renamed into place and synced', async () => {
+      const { adb, calls } = recorder()
+      await adb.writeDeviceFile('emulator-5554', '/data/local/tmp/f', '{"q":"it\'s"}')
+      const b64 = Buffer.from('{"q":"it\'s"}').toString('base64')
+      // base64, so a quote in the content cannot end the shell string.
+      expect(calls).toEqual([`echo ${b64} | base64 -d > /data/local/tmp/f.tmp && mv /data/local/tmp/f.tmp /data/local/tmp/f && sync`])
+    })
+  })
 })
