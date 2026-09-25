@@ -49,6 +49,7 @@ relay API는 4000, dashboard는 3001(Vite dev server).
 
 ```bash
 pnpm dev           # relay + dashboard + ios + android
+pnpm dev:lean      # pnpm dev를 Lean mode로 (두 에이전트 모두)
 pnpm dev:pool      # relay + ios + mock agents (시뮬레이터 없이 다중 기기)
 
 pnpm dev:relay                          # 릴레이 단독

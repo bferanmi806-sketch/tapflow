@@ -2,7 +2,7 @@ import { AndroidAgent } from '@tapflowio/android-agent'
 
 const RELAY = process.env['RELAY_URL'] ?? 'ws://localhost:4000'
 
-const agent = new AndroidAgent()
+const agent = new AndroidAgent({ lean: process.env.TAPFLOW_LEAN === 'on' })
 
 const shutdown = () => { agent.disconnect(); process.exit(0) }
 process.once('SIGINT', shutdown)
