@@ -24,6 +24,18 @@ function httpPost(port: number, urlPath: string, payload: unknown, headers: Reco
   })
 }
 
+async function canInitialize(port: number, headers: Record<string, string> = {}): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const req = http.request({ hostname: '127.0.0.1', port, path: '/api/v1/auth/status', method: 'GET', headers }, (res) => {
+      const chunks: Buffer[] = []
+      res.on('data', (c: Buffer) => chunks.push(c))
+      res.on('end', () => resolve((JSON.parse(Buffer.concat(chunks).toString()) as { canInitialize: boolean }).canInitialize))
+    })
+    req.on('error', reject)
+    req.end()
+  })
+}
+
 // P0-3 — 무인증 부트스트랩 레이스: init은 localhost 출처만 허용
 describe('POST /api/v1/auth/init — localhost-only gate', () => {
   let tmpDir: string
@@ -121,6 +133,47 @@ describe('POST /api/v1/auth/init — localhost-only gate', () => {
     it('프록시 우회 직접 연결(XFF 없음) → 201 (프록시 뒤 배포에서도 호스트의 admin init은 직접 동작)', async () => {
       const r = await httpPost(port, '/api/v1/auth/init', { email: 'admin@example.com', password: 'password123' })
       expect(r.status).toBe(201)
+    })
+  })
+
+  // The setup page decides between the form and the instruction from `auth/status`. Asked with the same
+  // request, it must answer what `auth/init` then does — a page showing the form to a client init refuses
+  // is #850 again, and one hiding it from a client init accepts locks the owner out of the browser path.
+  describe('auth/status agrees with auth/init', () => {
+    const cases: { name: string; allowed: boolean; trustedProxies?: string[]; headers?: Record<string, string> }[] = [
+      { name: 'direct localhost', allowed: true },
+      { name: 'spoofed XFF, no trusted proxy', allowed: true, headers: { 'X-Forwarded-For': '203.0.113.5' } },
+      { name: 'trusted proxy, remote client', allowed: false, trustedProxies: ['127.0.0.1'], headers: { 'X-Forwarded-For': '203.0.113.5' } },
+      { name: 'trusted proxy, LAN client', allowed: false, trustedProxies: ['127.0.0.1'], headers: { 'X-Forwarded-For': '192.168.0.42' } },
+      { name: 'trusted proxy, forwarded loopback', allowed: true, trustedProxies: ['127.0.0.1'], headers: { 'X-Forwarded-For': '::1' } },
+      { name: 'trusted proxy, bypassed', allowed: true, trustedProxies: ['127.0.0.1'] },
+    ]
+    for (const c of cases) {
+      it(c.name, async () => {
+        const server = new RelayServer({ port: 0, trustedProxies: c.trustedProxies })
+        await server.start()
+        try {
+          const port = (server.address() as { port: number }).port
+          // Pinned per case, not only compared: two answers that are wrong the same way would still agree.
+          expect(await canInitialize(port, c.headers)).toBe(c.allowed)
+          const r = await httpPost(port, '/api/v1/auth/init', { email: 'admin@example.com', password: 'password123' }, c.headers)
+          expect(r.status).toBe(c.allowed ? 201 : 403)
+        } finally {
+          await server.stop()
+        }
+      })
+    }
+
+    it('says no once an admin exists, whoever asks', async () => {
+      const server = new RelayServer({ port: 0 })
+      await server.start()
+      try {
+        const port = (server.address() as { port: number }).port
+        await httpPost(port, '/api/v1/auth/init', { email: 'admin@example.com', password: 'password123' })
+        expect(await canInitialize(port)).toBe(false)
+      } finally {
+        await server.stop()
+      }
     })
   })
 })

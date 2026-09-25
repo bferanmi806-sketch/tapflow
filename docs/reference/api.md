@@ -25,6 +25,18 @@ Successful deletes return `204` with no body.
 
 ## Auth
 
+### `GET /api/v1/auth/status`
+
+Whether the relay has an admin account yet. No authentication.
+
+**Response `200`**
+
+```json
+{ "initialized": false, "canInitialize": true }
+```
+
+`canInitialize` is `true` when no account exists and this request comes from the relay host, the only place the first account can be created from. The setup page uses it to show the `tapflow admin init` instruction instead of the form.
+
 ### `POST /api/v1/auth/init`
 
 Create the first admin account. Only works when no accounts exist yet.
@@ -41,7 +53,7 @@ Body (JSON):
 { "ok": true }
 ```
 
-Returns `403 { "error": "Already initialized" }` if an account already exists.
+Returns `403 { "error": "Already initialized" }` if an account already exists, and `403` with an error naming `tapflow admin init` if the request does not come from the relay host.
 
 
 ### `POST /api/v1/auth/login`

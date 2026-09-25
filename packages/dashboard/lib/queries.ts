@@ -24,11 +24,15 @@ export const queryKeys = {
   resourceHistory: (agent: string, range: string) => ['agents', agent, 'resources', range] as const,
 }
 
-/** Whether the relay has an admin yet. Throws when it cannot be asked — a failure is not "no". */
-export async function getAuthStatus(): Promise<{ initialized: boolean }> {
+/**
+ * Whether the relay has an admin yet, and whether this browser may create one (only the relay host can).
+ * Throws when it cannot be asked — a failure is not "no".
+ */
+export interface AuthStatus { initialized: boolean; canInitialize?: boolean }
+export async function getAuthStatus(): Promise<AuthStatus> {
   const res = await fetch('/api/v1/auth/status')
   if (!res.ok) throw new Error(`GET /api/v1/auth/status failed with ${res.status}`)
-  return res.json() as Promise<{ initialized: boolean }>
+  return res.json() as Promise<AuthStatus>
 }
 
 /**

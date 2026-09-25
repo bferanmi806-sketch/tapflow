@@ -10,10 +10,12 @@ If you haven't set up the relay yet, see [Self-Hosting the Relay](/guide/self-ho
 
 tapflow has no default credentials. On first launch, the dashboard automatically redirects to the setup page.
 
-1. Open `http://localhost:4000` (or your relay URL) in any browser.
+1. On the relay Mac, open `http://localhost:4000` in a browser.
 2. You are redirected to `/setup` automatically.
 3. Enter your email and a password (minimum 8 characters).
 4. Click **Create admin account**.
+
+The first account can only be created on the relay Mac. Opened from another machine, the setup page shows no form and tells you to run `tapflow admin init` on the relay Mac instead.
 
 ::: warning One-time only
 The setup page only appears when no accounts exist. After this step, use **Settings → Team** to invite additional users.

@@ -82,6 +82,43 @@ describe('Setup', () => {
     expect(screen.getByLabelText(/admin email/i)).toBeInTheDocument()
     expect(screen.queryByText('login page')).toBeNull()
   })
+
+  // #850: a browser the relay will not let initialize used to fill in the whole form and learn that
+  // only from the 403 on submit.
+  it('shows how to set up on the relay host instead of a form this browser cannot submit', async () => {
+    fetchMock.mockResolvedValue(json({ initialized: false, canInitialize: false }))
+    renderAt('/setup', '/setup', <Setup />)
+    const command = await screen.findByRole('textbox', { name: /only be created on the machine running the relay/i })
+    expect(command).toHaveValue('tapflow admin init')
+    expect(screen.queryByLabelText(/admin email/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: /create admin account/i })).toBeNull()
+  })
+
+  it('keeps the form for a relay that does not report canInitialize', async () => {
+    // Absent is not a no: only an explicit false hides the form, and auth/init still refuses on its own.
+    fetchMock.mockResolvedValue(json({ initialized: false }))
+    renderAt('/setup', '/setup', <Setup />)
+    expect(await screen.findByLabelText(/admin email/i)).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('tapflow admin init')).toBeNull()
+  })
+
+  it('shows no form before the relay answers', async () => {
+    // Shown first, the form would take typing from a browser that is about to be told it cannot use it.
+    fetchMock.mockReturnValue(new Promise<Response>(() => {}))
+    renderAt('/setup', '/setup', <Setup />)
+    await settle()
+    expect(screen.queryByLabelText(/admin email/i)).toBeNull()
+  })
+
+  it('keeps the form for a browser that may initialize', async () => {
+    fetchMock.mockResolvedValue(json({ initialized: false, canInitialize: true }))
+    renderAt('/setup', '/setup', <Setup />)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    await settle()
+    expect(screen.getByLabelText(/admin email/i)).toBeInTheDocument()
+    expect(screen.queryByText(/tapflow admin init/)).toBeNull()
+    expect(screen.queryByDisplayValue('tapflow admin init')).toBeNull()
+  })
 })
 
 describe('Invite', () => {
