@@ -1,5 +1,22 @@
 # @tapflowio/ios-agent
 
+## 0.24.0
+
+### Minor Changes
+
+- 2700746: Lean mode for iOS simulators. With `agent.lean: true` in `tapflow.config.json` (or `TAPFLOW_LEAN=on`), the agent turns off a fixed list of background services — Siri and Apple Intelligence background work, iCloud Keychain and backup, Health app and HomeKit, photo analysis, Screen Time, iMessage and FaceTime, Continuity, telemetry and similar — on each simulator it boots, and puts them back when it shuts the simulator down. Measured on iOS 27, a simulator uses about a quarter less memory. Wallpaper, widgets and the services apps commonly call (push, StoreKit, CloudKit, HealthKit, the photo picker, universal links and others) stay on; an app that needs one on the list should run with Lean mode off. `tapflow init` asks on a Mac (default off) and `tapflow doctor ios` reports it. iOS 18.5 or later. Android emulators get their own Lean mode in this release: four bundled Google apps kept disabled.
+
+### Patch Changes
+
+- 2f66f31: <!-- changelog: internal — fixes a test-teardown race (#826). The product half, a queued liveness check that no longer runs after dispose, changes nothing observable: disconnect queues forget() for every device, which rewrites the same rule, and the enforcement-lost report it drops had no sessions left to reach. -->
+
+  A liveness check queued before `SimulatorNetwork.dispose()` no longer runs, and `idle()` waits for queued work to settle ([#826](https://github.com/jo-duchan/tapflow/issues/826)).
+
+- Updated dependencies [2700746]
+  - @tapflowio/agent-core@0.24.0
+  - @tapflowio/audiotap-helper@0.3.6
+  - @tapflowio/protocol@0.24.0
+
 ## 0.23.0
 
 ### Patch Changes

@@ -1,5 +1,19 @@
 # @tapflowio/android-agent
 
+## 0.24.0
+
+### Minor Changes
+
+- bcc7c8e: Lean mode on Android emulators. With `agent.lean` on, the agent keeps four bundled Google apps disabled — the Google app, YouTube, YouTube Music and Digital Wellbeing — which start on their own at boot. Measured on an API 34 emulator, the guest takes about 350 MB, just under a fifth, less of the Mac's memory. The emulator returns memory only when it exits, so the apps stay disabled while Lean mode is on, and the saving starts from an emulator's second boot through tapflow; turning Lean mode off brings them back at the next boot. Photos, Messages, Gmail and Maps stay on because apps open images, texts, mail and maps through them. An emulator that is already running when a session asks for it is left as it is. `tapflow init` now asks wherever adb is installed, and `tapflow doctor` shows the setting per platform.
+
+### Patch Changes
+
+- a5630d8: Android screenshots of photo-heavy screens no longer fail with "stdout maxBuffer length exceeded" ([#842](https://github.com/jo-duchan/tapflow/issues/842)). The agent ran `adb exec-out screencap -p` through Node's `execFile` with its default 1 MiB stdout limit, so a 1080×2424 PNG with photos in it was rejected before it left the Mac, while a flatter screen of the same size compressed under the limit and went through. `adb` output may now be 64 MiB, the room the iOS agent already gives `xcodebuild`, for the screenshot and for the `uiautomator dump` behind the accessibility tree.
+- Updated dependencies [2700746]
+  - @tapflowio/agent-core@0.24.0
+  - @tapflowio/audiotap-helper@0.3.6
+  - @tapflowio/protocol@0.24.0
+
 ## 0.23.0
 
 ### Minor Changes

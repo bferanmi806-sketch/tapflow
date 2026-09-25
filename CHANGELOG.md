@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-09-26
+
 ### Breaking Changes
 
 - **`tapflow init` writes to this machine's install directory, not the current one.** It is `~/.tapflow` by default, so `tapflow init` from a fresh directory no longer leaves a `tapflow.config.json` in it. Every command resolves the same install: `TAPFLOW_HOME` when set, the current directory when it already holds an install (a `tapflow.config.json`, or a `.tapflow/data` or `.tapflow-data` with data in it), and `~/.tapflow` otherwise — so an existing install keeps running exactly where it is, with its data untouched. Migrate: to keep a per-directory install, set `TAPFLOW_HOME=<dir>` for the commands that use it, in your shell profile or the service environment; the systemd and Docker examples in the docs now do.
@@ -768,7 +770,8 @@ found out by waiting.
 
 - Automatic `tapflow.config.json` creation as a side effect of `tapflow start` / `tapflow relay start`.
 
-[Unreleased]: https://github.com/jo-duchan/tapflow/compare/v0.23.0...HEAD
+[Unreleased]: https://github.com/jo-duchan/tapflow/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/jo-duchan/tapflow/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/jo-duchan/tapflow/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/jo-duchan/tapflow/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/jo-duchan/tapflow/compare/v0.20.1...v0.21.0

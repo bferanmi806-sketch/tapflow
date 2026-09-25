@@ -1,5 +1,69 @@
 # @tapflowio/relay
 
+## 0.24.0
+
+### Minor Changes
+
+- 2700746: Lean mode for iOS simulators. With `agent.lean: true` in `tapflow.config.json` (or `TAPFLOW_LEAN=on`), the agent turns off a fixed list of background services — Siri and Apple Intelligence background work, iCloud Keychain and backup, Health app and HomeKit, photo analysis, Screen Time, iMessage and FaceTime, Continuity, telemetry and similar — on each simulator it boots, and puts them back when it shuts the simulator down. Measured on iOS 27, a simulator uses about a quarter less memory. Wallpaper, widgets and the services apps commonly call (push, StoreKit, CloudKit, HealthKit, the photo picker, universal links and others) stay on; an app that needs one on the list should run with Lean mode off. `tapflow init` asks on a Mac (default off) and `tapflow doctor ios` reports it. iOS 18.5 or later. Android emulators get their own Lean mode in this release: four bundled Google apps kept disabled.
+- 5407be5: **`tapflow migrate` runs every migration an install still needs.** It checks each one, lists what applies, asks once in a terminal and runs without asking elsewhere, and stops at the first failure with exit 1. Today that is `data-dir`, when the install has a `.tapflow-data/` with data in it, and `net-filter`, when the iOS network filter is installed but out of date or not filtering. A Mac that never installed the filter is left alone. `tapflow migrate data-dir` and `tapflow migrate net-filter` work as before.
+
+  **Builds still install after their data directory moves** ([#836](https://github.com/jo-duchan/tapflow/issues/836)). The relay stored each build's full path, so after `tapflow migrate data-dir` every build uploaded before it failed to install with "cannot read this build file", and expired ones were removed from the list while their files stayed on disk. The relay now finds the file in its current `uploads/builds/` first and falls back to the stored path.
+
+  `tapflow migrate data-dir` refuses while something is listening on the relay's port, since a running relay would put later uploads back into `.tapflow-data/`. It also rewrites `tapflow.config.json` before the move and puts it back if the move fails, where a config it could not write used to leave the data moved and the config pointing at the old directory.
+
+- 9f3a141: **tapflow keeps one install per machine, in `~/.tapflow`.** `tapflow init` writes the configuration there instead of the directory you happened to be standing in, and every command finds the same install: `TAPFLOW_HOME` when it is set, the current directory when it already is an install, and `~/.tapflow` otherwise. `tapflow start` and `tapflow relay start` print the install directory, the configuration file and the data directory they resolved. Existing installs keep running where they are, and nothing moves.
+
+  `init` also writes an `AGENTS.md` — a tapflow section between `<!-- tapflow:begin -->` markers, leaving anything you wrote outside them alone — and, when the directory is tapflow's own, a `CLAUDE.md` containing `@AGENTS.md`. A coding agent opened in the install directory then answers tapflow questions from the documentation, with the configuration and `tapflow doctor` in reach. Running `init` again keeps the configuration and refreshes only that section.
+
+  Every CLI command used to leave a `jwt-secret` file in whatever directory it ran in, including `tapflow --version`: the relay created it when its configuration module loaded, and the CLI loads every command at startup. The relay creates it when it starts now.
+
+### Patch Changes
+
+- 0a29931: The App Center remembers which releases you opened or closed, per app and per browser. A release you never touched follows the default, where the newest is open, so a version uploaded since your last visit arrives open, and one you collapsed stays collapsed.
+
+  With a status filter on, changing a build to a status the filter hides no longer drops focus to the top of the page. Focus moves to the next build in the release, or the previous one, or the neighbouring release's header, and that control says why the build disappeared. After a retry the first release is announced in its actual state from the start, instead of collapsed and then expanded. Release headers are headings, so a screen reader can move between releases. Scheduling and cancelling a deletion now say so. Every control on a build row names the build it acts on, and the deletion icons show what they do on keyboard focus as well as on hover.
+
+- 75660db: Switching apps in the App Center no longer flashes "No builds yet" on the way. The page cleared the list the moment you clicked, before it had asked the server anything, so for one frame an app nobody had fetched yet looked like an app with nothing in it — and what you saw on a single click was the list, then that message, then "Loading…", then the new list.
+
+  The list you were looking at now stays on screen until the new one arrives, with the release you had open still open.
+
+  Two things the same page got wrong for the same reason are fixed with it. A slow answer for one app could paint its builds under a different app you had since selected. And a failed request was shown as "No builds yet", so a relay you could not reach and an app with no builds looked identical — including when the relay answered with an error rather than not answering at all, which the page had no way to tell apart. A failure now says so, and offers to try again.
+
+- ad39cd2: The comment panel beside a QA session says so when its comments cannot be loaded, instead of showing "No comments yet". It reads through the same query cache as the rest of the dashboard.
+- eb6fb90: The dashboard reads every server list through one query cache. When a list cannot be loaded, it now says so and offers a retry. Before, Tokens and Team settings took a failed response for their rows and broke, and recordings showed a failure as "No recordings yet". Saving the workspace name or logo updates the sidebar without a reload, and signing out clears what was cached, so the next person to sign in never sees the last one's data. An invite or password-reset link with no token shows as expired at once, not after a blank screen.
+- 2a96beb: When the App Center's build list is replaced — by its failure state, by its empty state, or by the list again after a retry — focus moves to the first control in what replaced it, or to the search box when there is none, instead of falling to the top of the page. It moves only when replacing the view is what removed it. Wherever focus lands says what happened. A failed search fetched again in the background keeps its failure on screen with "Trying…" until the answer arrives, and "Trying…" keeps focus while it runs. Closing a build's "Schedule deletion" dialog returns focus to the button that opened it, and each release header says whether it is open.
+- 6b71a1d: Form fields no longer report an error when you leave them without typing. Every form in the dashboard validated on blur regardless of whether anything had been entered, so leaving a field you had not touched showed `Enter a valid email` or `Password must be at least 8 characters` before you had done anything. Opening a dialog was enough on its own: it focuses its first control, so the next pointer move anywhere else triggered the message.
+
+  In a dialog it also cost the first click on Close. The message enters the layout, everything below it moves, and a `click` needs its press and release on the same element, so the press that dismissed the dialog landed on nothing and it took a second one.
+
+  Validation now runs when the form is submitted, and from then on corrects as you type. A message also names its field now, and the field points back at it, so it is read out with the field rather than left on screen for someone who cannot see it. Eight fields used to report the validation library's own developer text — "Too small: expected string to have >=8 characters" — and now say what they mean. This covers sign-in, first-run setup, the invitation and password-reset pages, and the team, token and settings forms, and the App Center's add-app dialog gained the announcement the others have.
+
+- 96bd914: The dashboard is built with the React Compiler. It memoises the work React would otherwise repeat on every render, without the hand-written `useCallback` and `useMemo` that were doing part of that job.
+
+  The bundle grows: the first load is 3,810 B larger compressed (170,543 → 174,353), because the memoisation the compiler adds is code. No behaviour change is intended — the compiler only memoises, and leaves alone any function it cannot prove — and the test run is compiled the same way the build is, so the suite exercises what ships.
+
+- cc4676d: The setup page no longer shows its form to a browser that cannot create the first account. Only the relay host may create it, so opening a new relay from another machine showed the form and refused it only after the email and both passwords had been typed in. Such a browser now sees the instruction instead: run `tapflow admin init` on the relay host, or, for the Docker image, set `TAPFLOW_ADMIN_EMAIL` and `TAPFLOW_ADMIN_PASSWORD`. `GET /api/v1/auth/status` reports this as `canInitialize`, decided by the same check `POST /api/v1/auth/init` enforces, so the two cannot disagree; the refusal on submit stays as it was.
+- adc07d2: <!-- changelog: internal — no behaviour changes; the one timing difference the refactor could have introduced was kept identical on purpose (see below) -->
+
+  Neither device viewer compiled under the React Compiler. Both do now, and the two halves of the
+  reason were in different places.
+
+  `AndroidViewer` mirrored the current rotation into refs so `composeFrame` could read it without
+  being rebuilt — a Rules of React violation rather than a style choice, because the closure was
+  handed to `useClientRecording` and _then_ the turn it reads was written into a ref the hook already
+  held. The recorder now takes a `setComposeFrame` setter and calls whichever composer was registered
+  last, so the turn is an ordinary dependency again. Registration is a layout effect because
+  `requestAnimationFrame` fires before paint, which is the timing the mirrors had. `IOSViewer` takes
+  the same setter, but its composer reads what it needs live on every draw, so it registers once.
+
+  The unmount cleanup that puts a rotated device back upright keeps its whole body in a ref, so its
+  dependency list is honestly empty — the `react-hooks/exhaustive-deps` suppression it carried was
+  enough on its own to keep the React Compiler out of the entire file.
+
+- Updated dependencies [2700746]
+  - @tapflowio/agent-core@0.24.0
+  - @tapflowio/protocol@0.24.0
+
 ## 0.23.0
 
 ### Minor Changes
