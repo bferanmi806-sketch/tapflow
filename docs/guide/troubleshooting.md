@@ -17,8 +17,8 @@ Stop the one that is running, or use the session it already serves.
 ### Agent cannot connect to the relay
 
 1. Verify the relay is running.
-2. Check that the URL in the `--relay` option uses `ws://` — agents always connect over the local network.
-3. Run `tapflow doctor` to inspect your environment.
+2. Check the scheme of the URL in the `--relay` option: `ws://` for a plain-HTTP relay, `wss://` when the relay has `tls` configured and serves HTTPS. The agent command that `tapflow start` and `tapflow relay start` print already carries the right scheme.
+3. Run `tapflow doctor` to inspect your environment. If the relay is running on the same Mac, the `Port 4000` check fails because the relay holds the port. You can ignore that one.
 
 ## Opening a build fails with `spawn unknown error` {#spawn-unknown-error}
 
@@ -112,8 +112,8 @@ Install it from Xcode → Settings → Platforms.
 Most often the AVD uses an untested `google_apis_playstore` image. Recreate the AVD with the tested `google_apis/arm64-v8a` image:
 
 ```sh
-sdkmanager "system-images;android-34;google_apis;arm64-v8a"
-avdmanager create avd -n Pixel_8 -k "system-images;android-34;google_apis;arm64-v8a"
+sdkmanager "system-images;android-35;google_apis;arm64-v8a"
+avdmanager create avd -n Pixel_8 -k "system-images;android-35;google_apis;arm64-v8a"
 ```
 
 ### `INSTALL_FAILED_NO_MATCHING_ABIS` — APK not compatible with Apple Silicon emulator
@@ -190,7 +190,7 @@ Black (`#000000`), white (`#FFFFFF`), and pure R/G/B are identical across all th
 
 ### Emulator is slow when the Mac is unattended
 
-tapflow automatically prevents the host Mac from idle-sleeping while the agent is running (`caffeinate -i`). The assertion is acquired when the agent connects and released when it exits.
+tapflow automatically prevents the host Mac from idle-sleeping while the agent is running (`caffeinate -di`, or `caffeinate -i` when `TAPFLOW_ALLOW_DISPLAY_SLEEP` is set). The assertion is acquired when the agent connects and released when it exits.
 
 If the emulator is still slow when the Mac is unattended, check the following.
 
@@ -281,6 +281,7 @@ Installing ends with a distinct code per kind of failure.
 | 5 | The Mac has to restart for this to finish |
 | 6 | The system extension manager gave no answer within 45 seconds |
 | 7 | The running filter did not answer |
+| 8 | An argument this build does not understand. Can happen when the installed filter app is older than the agent |
 
 What the extension can and cannot see is in [Network Control](/guide/network-control#what-you-are-trusting).
 
@@ -369,7 +370,7 @@ Run `tapflow doctor` again to confirm the check passes.
 
 ### No simulator is running
 
-`tapflow doctor` shows a warning when no simulator is booted. This does not block `tapflow start` — the warning is informational.
+`tapflow doctor` does not check whether a simulator is booted. It passes as long as at least one simulator is available, and warns only when there are none. The agent boots simulators on demand when a session starts.
 
 To boot a simulator before starting:
 
@@ -393,7 +394,7 @@ Add these lines to `~/.zshrc` (or `~/.bashrc`) to make the change permanent, the
 
 ### Session ends automatically
 
-Sessions auto-close after 30 minutes of inactivity. This timeout cannot be changed from settings. Reconnect from the dashboard.
+A session auto-closes 5 minutes after the browser disconnects. While a browser stays connected, the session does not time out, even with no input. Change the delay with the relay's `IDLE_TIMEOUT_MS` environment variable (in milliseconds). Reconnect from the dashboard.
 
 ## Stream lag or stuttering {#stream-lag}
 
@@ -456,11 +457,11 @@ An admin account already exists on the relay. Sign in and invite teammates from 
 
 ### Invitation link expired
 
-Invitation links expire after **7 days**. An Admin must send a new invitation from **Settings → Team**. If SMTP is not configured, copy the `token` from the API response to share the link manually.
+Invitation links expire after **7 days**. An Admin must create a new invitation from **Settings → Team**. If SMTP is not configured, copy the link shown in the invite dialog and share it manually.
 
 ### Password reset link expired
 
-Password reset links expire after **2 hours**. An Admin can request a new link from **Settings → Team → select member → Send password reset**.
+Password reset links expire after **2 hours**. An Admin can send a new link with **Reset pwd** on the member's row in **Settings → Team**. Reset links go out by email only, so SMTP must be configured.
 
 ## Viewing logs
 

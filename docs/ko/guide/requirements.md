@@ -36,7 +36,7 @@ tapflow가 개발과 검증에 사용해온 환경이 Apple Silicon입니다. In
 ### Android
 
 - Android SDK (`adb`가 `$PATH`에 있거나 `ANDROID_HOME` 설정)
-- `google_apis/arm64-v8a` 시스템 이미지 (android-34)를 사용하는 에뮬레이터
+- `google_apis/arm64-v8a` 시스템 이미지 (android-35)를 사용하는 에뮬레이터
 
 ## 대시보드
 

@@ -18,8 +18,9 @@ tapflow agent start --relay ws://192.168.x.x:4000 --token tflw_pat_xxxxxxxx
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--relay` | `ws://localhost:[port]` | Relay WebSocket URL. Port is read from `tapflow.config.json`. |
-| `--device` | all simulators | Limit which iOS simulators are exposed to the relay, by name or UDID |
+| `--relay` | `relay.url`, or `ws://localhost:[port]` | Relay WebSocket URL. Must start with `ws://` or `wss://`. When omitted, the agent uses `relay.url` from `tapflow.config.json` (or `TAPFLOW_RELAY_URL`), and falls back to `ws://localhost` on the configured port. If `relay.url` is an `http://` or `https://` address, the agent refuses to start, so pass `--relay` explicitly. |
+| `--platform` | auto-detect | Platform to run: `ios`, `android`, or `all`. When omitted, every platform available on this Mac runs. |
+| `--device` | all devices | Limit the agent to one device. Works for iOS simulators and Android AVDs, and must match the name or ID exactly. |
 | `--token` | none | Token with the `agent` scope for remote relay authentication. Can also be passed via the `TAPFLOW_AGENT_TOKEN` environment variable. |
 
 ::: tip Wired LAN recommended
@@ -74,13 +75,14 @@ Each Mac supports 2–4 simultaneous simulators depending on available RAM. The 
 ### Troubleshooting
 
 ```
-Common
-  ✓ Node v22.x
+  ✓  Node v22.x
+  ✓  Port 4000
 
-iOS
-  ✓ Xcode 26.0
-  ✓ xcrun simctl
-  ✓ Simulator booted: iPhone 16 Pro
+  iOS
+  ✓  Xcode 26.0
+  ✓  xcrun simctl
+  ✓  Simulator available (8)
+  …
 ```
 
 ## Android
@@ -88,30 +90,33 @@ iOS
 ### Prerequisites
 
 - Android SDK installed (`ANDROID_HOME` set or `adb` in `$PATH`)
-- An AVD using the `google_apis/arm64-v8a` system image (android-34)
+- An AVD using the `google_apis/arm64-v8a` system image (android-35)
 
 ### Create an AVD
 
-Create an AVD using Android Studio's AVD Manager. See [Create and manage virtual devices](https://developer.android.com/studio/run/managing-avds) for a step-by-step guide.
+`tapflow setup android` creates four AVDs by form factor (`tapflow-compact`, `tapflow-phone`, `tapflow-large`, `tapflow-tablet`) from the android-35 `google_apis/arm64-v8a` image. See [Environment Setup](/guide/environment-setup). To create one yourself, use Android Studio's AVD Manager; see [Create and manage virtual devices](https://developer.android.com/studio/run/managing-avds) for a step-by-step guide.
 
-When selecting the system image, note the following:
+When you create an AVD yourself, note the following about the system image:
 
 ::: warning AVD image matters
 Use a `google_apis/arm64-v8a` image — the tested and recommended configuration. The `google_apis_playstore` image is not tested and has shown H.264 encoder issues.
 :::
 
-The agent boots the emulator automatically, waits for `sys.boot_completed`, then begins streaming. For emulators on Apple Silicon, the agent encodes H.264 on the Mac host (VideoToolbox), capped at 30 fps — no GPU load on the emulator itself.
+The agent boots the emulator automatically, waits for `sys.boot_completed`, then begins streaming. For emulators on Apple Silicon, the agent encodes H.264 on the Mac host (VideoToolbox), capped at 30 fps by default (change it with `TAPFLOW_ANDROID_FPS`) — no GPU load on the emulator itself.
 
 ### Troubleshooting
 
 ```sh
 tapflow doctor
-# Common
-#   ✓ Node v22.x
+#   ✓  Node v22.x
+#   ✓  Port 4000
 #
-# Android
-#   ✓ adb found: /usr/local/bin/adb
-#   ✓ AVD: Pixel_8 (android-34 · google_apis/arm64-v8a)
+#   Android
+#   ✓  Android SDK: /Users/you/Library/Android/sdk
+#   ✓  adb found: /Users/you/Library/Android/sdk/platform-tools/adb
+#   ✓  aapt (build-tools): /Users/you/Library/Android/sdk/build-tools/35.0.0/aapt
+#   ✓  AVD available: tapflow-compact
+#   ✓  Lean mode (Android): off
 ```
 
 See [Troubleshooting](/guide/troubleshooting) for more detailed solutions.

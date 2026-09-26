@@ -44,7 +44,7 @@ This decides how teammates reach the relay.
 Each tunnel's setup steps and prerequisites are covered in [Self-Hosting the Relay](/guide/self-hosting#external-access).
 
 ::: tip Non-interactive environments (CI)
-To set the tunnel without prompts, pass a flag: `tapflow init --tunnel tailscale` or `tapflow init --tunnel rathole`. Use `--force` to overwrite an existing file; without it, `--tunnel` on a configured install stops rather than ignoring the flag.
+To set the tunnel without prompts, pass a flag: `tapflow init --tunnel tailscale` or `tapflow init --tunnel rathole`. Use `--force` to overwrite an existing file; without it, `--tunnel` on a configured install stops rather than ignoring the flag. `--tunnel rathole` writes `tunnel.serverAddr` and `tunnel.publicUrl` as empty values, and every `tapflow` command fails config validation until both are filled in, so fill them in `tapflow.config.json` right away.
 :::
 
 ## 2. Streaming performance (LAN only)
@@ -88,7 +88,7 @@ The answer is saved as `agent.lean` in `tapflow.config.json`, and you can change
 
 `<data directory>/.env` — `~/.tapflow/data/.env` on a default install — is the **default home for every relay secret**. Choosing DNS auto-issue makes `init` scaffold an empty template for the token, but this file holds more than DNS tokens — `JWT_SECRET`, the SMTP password, and any other secret go here too, one per line. Secrets stay out of `tapflow.config.json` and live in this gitignored file instead.
 
-Paste each value after the `=`.
+The file `init` creates holds only the token lines for the DNS provider you chose. Add a line for any other secret, as in the example below, and paste each value after the `=`.
 
 ```ini
 # tapflow secrets — do not commit. Paste each value after the =.
@@ -154,7 +154,7 @@ Every command answers this the same way, in this order:
 
 The second rule is what keeps an install created before tapflow had a home working exactly where it is. `tapflow start` and `tapflow relay start` print the directory, the configuration file and the data directory they resolved, so you can always see which one is in use.
 
-Set `TAPFLOW_HOME` for a server or a second install: `TAPFLOW_HOME=/var/lib/tapflow tapflow init` creates that directory, and every later command that carries the same variable uses it. A `TAPFLOW_HOME` naming a directory that does not exist stops any command that runs the relay, rather than quietly starting an empty install somewhere else.
+Set `TAPFLOW_HOME` for a server or a second install: `TAPFLOW_HOME=/var/lib/tapflow tapflow init` creates that directory, and every later command that carries the same variable uses it. A `TAPFLOW_HOME` naming a directory that does not exist stops any command that runs the relay, as well as `agent start`, `status`, `logs` and `admin init`, rather than quietly starting an empty install somewhere else.
 
 Data lives at `<install>/data` on a new install. An install that already has `.tapflow/data` or `.tapflow-data` keeps reading it, and `init` writes whichever one it found into `local.dataDir`, so the layout cannot change under you later.
 

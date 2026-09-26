@@ -1,6 +1,6 @@
 # Quick Start
 
-Get tapflow running in under 5 minutes.
+This page walks you from installing tapflow to opening the dashboard. If Xcode or the Android SDK still needs downloading, the `tapflow setup` step adds that download time.
 
 ## 1. Install tapflow
 
@@ -32,7 +32,7 @@ Skip this on a relay-only server (Linux). See [Environment Setup](/guide/environ
 
 ## 3. Configure tapflow (optional)
 
-Run `tapflow init` to set this machine up. It writes `tapflow.config.json` into `~/.tapflow`, asks for a tunnel and, on a plain LAN, your streaming performance (HTTP or HTTPS). Skip this step if the defaults are fine — port 4000, no tunnel, HTTP.
+Run `tapflow init` to set this machine up. It writes `tapflow.config.json` into `~/.tapflow`, asks for a tunnel and, on a plain LAN, your streaming performance (HTTP or HTTPS). On a machine that can run simulators or emulators, it also asks whether to turn on Lean mode. Skip this step if the defaults are fine — port 4000, no tunnel, HTTP.
 
 ```sh
 tapflow init
@@ -48,9 +48,24 @@ On your Mac, run:
 
 ```sh
 tapflow start
-# ✓ Relay started on ws://localhost:4000
-# ✓ iOS Agent connected (3 simulators available)
 ```
+
+It prints the install, config and data paths first, then a banner like the one below once the relay and agent are ready. If an Android environment is present, an `android` agent connects too.
+
+```text
+  →  Relay started on http://localhost:4000
+
+  ✓  Connecting ios agent…
+
+  ┌─────────────────────────────────────────────┐
+  │  ✓  TAPFLOW READY                           │
+  └─────────────────────────────────────────────┘
+     Relay  : http://localhost:4000
+     Open http://localhost:4000 in your browser.
+     Press Ctrl+C to stop.
+```
+
+Leave this terminal open. `Ctrl+C` stops the relay and the agent together.
 
 ::: tip Running the relay on a separate server?
 Use `tapflow relay start` and `tapflow agent start`. See [Self-Hosting the Relay](/guide/self-hosting).

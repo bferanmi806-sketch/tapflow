@@ -120,8 +120,9 @@ tapflow flow run .tapflow/flows/login.yaml .tapflow/flows/checkout.yaml
 | `--relay <url>` | Relay URL (기본값 `ws://localhost:4000`) |
 | `--token <token>` | 원격 relay용 PAT (또는 `TAPFLOW_TOKEN` 환경변수) |
 | `--device <name>` | 대상 디바이스를 이름으로 지정. 꺼져 있으면 부팅합니다. |
-| `--session <id>` | 대상 세션 ID (`tapflow status`로 확인) |
+| `--session <id>` | 대상 디바이스의 세션 ID. 같은 이름의 디바이스가 여럿이라 `--device`로 하나를 고를 수 없을 때 씁니다. |
 | `--build <id>` | 테스트 대상 빌드. 실행 전 설치되고 `launchApp` 스텝이 이 빌드를 실행합니다. |
+| `--no-install` | 실행 전에 `--build` 빌드를 설치하지 않습니다. 이미 설치된 빌드로 다시 실행할 때 씁니다. |
 | `--junit <path>` | JUnit XML 리포트를 지정한 경로에 씁니다. |
 | `--artifacts <dir>` | 실패 스크린샷 저장 디렉터리 (기본값 `.tapflow/artifacts`) |
 | `--timeout <seconds>` | 셀렉터 기본 대기 시간 (기본값 10, 최대 2147483.647) |

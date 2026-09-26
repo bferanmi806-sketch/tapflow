@@ -21,7 +21,7 @@ LLM 에이전트가 시뮬레이터를 자동으로 조작하는 방식은 [CI/C
 
 ## 엔드포인트 등록
 
-등록 방법은 두 가지입니다. 설정을 파일로 관리하면 `config.json`으로 선언하고, 런타임에 추가·삭제하려면 REST API를 씁니다. 두 방식으로 등록한 엔드포인트는 함께 발송됩니다.
+등록 방법은 두 가지입니다. 설정을 파일로 관리하면 `tapflow.config.json`으로 선언하고, 런타임에 추가·삭제하려면 REST API를 씁니다. 두 방식으로 등록한 엔드포인트는 함께 발송됩니다.
 
 ### config.json으로 선언 (권장)
 
@@ -35,7 +35,7 @@ LLM 에이전트가 시뮬레이터를 자동으로 조작하는 방식은 [CI/C
 }
 ```
 
-secret은 config.json에 직접 쓰지 않습니다. `secretEnv`에 환경 변수 이름을 지정하면 tapflow가 그 값을 서명 키로 읽어옵니다. 실제 secret은 `.env`에 둡니다.
+secret은 `tapflow.config.json`에 직접 쓰지 않습니다. `secretEnv`에 환경 변수 이름을 지정하면 tapflow가 그 값을 서명 키로 읽어옵니다. 실제 secret은 `.env`에 둡니다.
 
 ```
 TAPFLOW_WEBHOOK_SECRET_CI=a-long-random-string
@@ -47,7 +47,7 @@ TAPFLOW_WEBHOOK_SECRET_CI=a-long-random-string
 | `secretEnv` | 서명 secret이 담긴 환경 변수 이름 (선택, 강하게 권장) |
 | `enabled` | 활성 여부 (기본 `true`) |
 
-config.json 변경은 relay를 다시 시작해야 반영됩니다.
+`tapflow.config.json` 변경은 relay를 다시 시작해야 반영됩니다.
 
 ### REST API로 등록
 
@@ -66,7 +66,7 @@ curl -X POST https://your-relay/api/v1/webhooks \
 | `secret` | 서명에 쓸 비밀 키 (선택, 강하게 권장) |
 | `enabled` | 활성 여부 (기본 `true`) |
 
-REST API는 `config.json`과 달리 secret을 요청 본문에 직접 담습니다. 여러 개를 등록하면 활성화된 모든 엔드포인트로 각각 전송되므로, Slack과 사내 CI에 동시에 연결할 수 있습니다.
+REST API는 `tapflow.config.json`과 달리 secret을 요청 본문에 직접 담습니다. 여러 개를 등록하면 활성화된 모든 엔드포인트로 각각 전송되므로, Slack과 사내 CI에 동시에 연결할 수 있습니다.
 
 REST 관리용 엔드포인트는 다음과 같습니다.
 

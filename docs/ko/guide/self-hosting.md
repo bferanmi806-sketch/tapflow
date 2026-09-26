@@ -4,7 +4,7 @@
 
 ::: info 릴레이 URL 두 가지 역할
 - **대시보드 접속** — 브라우저에서 `http://localhost:4000` (로컬) 또는 `http://192.168.x.x:4000` (팀 내 접속)
-- **에이전트 연결** — 릴레이가 다른 Mac에 있을 때: `tapflow agent start --relay ws://192.168.x.x:4000`. 에이전트→릴레이 구간은 항상 LAN 내부 `ws://`를 사용하며, 원격 에이전트는 `agent` 스코프 토큰으로 인증합니다([원격 릴레이 인증](/ko/guide/agent#원격-릴레이-인증)).
+- **에이전트 연결** — 릴레이가 다른 Mac에 있을 때: `tapflow agent start --relay ws://192.168.x.x:4000`. 에이전트→릴레이 구간은 LAN 내부로 연결합니다. 스킴은 `ws://`이고 릴레이에 `tls`를 설정해 HTTPS로 운영하면 `wss://`입니다. 원격 에이전트는 `agent` 스코프 토큰으로 인증합니다([원격 릴레이 인증](/ko/guide/agent#원격-릴레이-인증)).
 :::
 
 ## 배포 시나리오
@@ -131,7 +131,7 @@ tapflow agent start --relay ws://192.168.x.x:4000 --token tflw_pat_xxxxxxxx
 openssl rand -hex 32
 ```
 
-생성된 값을 `.tapflow/data/.env`에 적으면 재시작할 때마다 다시 export하지 않아도 됩니다. 릴레이가 시작할 때 파일을 읽습니다:
+생성된 값을 데이터 디렉토리의 `.env`(기본 설치에서는 `~/.tapflow/data/.env`)에 적으면 재시작할 때마다 다시 export하지 않아도 됩니다. 릴레이가 시작할 때 파일을 읽습니다:
 
 ```ini
 JWT_SECRET=YOUR_JWT_SECRET
@@ -245,7 +245,7 @@ Tailscale은 브라우저→릴레이 경로만 제공합니다. 에이전트(�
 
 #### HTTPS로 더 부드러운 스트림 켜기 (선택)
 
-기본 접속은 평문 HTTP라 팀원에게 Standard 프로파일이 적용됩니다. Tailscale의 무료 HTTPS로 종단하면 Smooth 프로파일로 전환됩니다([스트림 품질](/ko/guide/streaming) 참고). Tailscale이 `*.ts.net` 인증서를 자동 발급·갱신하므로 도메인이나 DNS 토큰이 필요 없습니다.
+기본 접속은 평문 HTTP이고 tailnet 주소는 외부 주소로 분류되므로 팀원은 1000px로 줄인 스트림을 WASM 디코더로 받습니다. Tailscale의 무료 HTTPS로 종단하면 터널 포트를 거쳐 들어오므로 Smooth 프로파일(원본 해상도, 하드웨어 디코딩)로 전환됩니다([스트림 품질](/ko/guide/streaming) 참고). Tailscale이 `*.ts.net` 인증서를 자동 발급·갱신하므로 도메인이나 DNS 토큰이 필요 없습니다.
 
 1. Tailscale admin 콘솔의 **DNS** 설정에서 **MagicDNS**와 **HTTPS Certificates**를 켭니다. 머신 이름이 공개 Certificate Transparency 기록에 남는다는 점에 동의해야 합니다.
 2. 릴레이 Mac에서 릴레이의 **터널 포트** 앞에 HTTPS를 둡니다. 기본값은 `4001`이고, `TAPFLOW_TUNNEL_PORT`를 정했거나 릴레이 자신이 4001을 쓰면 4002로 비켜섭니다. 시작 배너에 실제로 잡은 포트가 나오니 아래 명령에는 그 번호를 쓰세요. Tailscale이 인증서를 자동 관리하므로 별도 발급 명령은 필요 없습니다:
@@ -332,7 +332,7 @@ sudo systemctl reload caddy
 }
 ```
 
-터널 토큰을 `.tapflow/data/.env`에 적습니다:
+터널 토큰을 데이터 디렉토리의 `.env`(기본 설치에서는 `~/.tapflow/data/.env`)에 적습니다:
 
 ```ini
 TAPFLOW_TUNNEL_TOKEN=your-secret-token
@@ -439,7 +439,7 @@ litestream restore -config litestream.yml -if-replica-exists "$DATA_DIR/tapflow.
 npm install -g pm2 tapflow
 ```
 
-`JWT_SECRET`을 `.tapflow/data/.env`에 넣어 두면(또는 비워 두면 자동 생성) 다음으로 시작합니다:
+`JWT_SECRET`을 데이터 디렉토리의 `.env`(기본 설치에서는 `~/.tapflow/data/.env`)에 넣어 두거나 비워 두고(비우면 자동 생성) 다음으로 시작합니다:
 
 ```sh
 pm2 start tapflow --name relay -- relay start
@@ -481,7 +481,7 @@ TAPFLOW_DATA_DIR=/var/lib/tapflow/.tapflow/data
 JWT_SECRET=YOUR_JWT_SECRET
 ```
 
-`TAPFLOW_HOME`만 두면 데이터는 `/var/lib/tapflow/data`에 놓입니다. 그런데도 `TAPFLOW_DATA_DIR`을 함께 적는 이유는, 설치 디렉토리 개념이 생기기 전에 구축한 서버와 같은 경로를 쓰기 위해서입니다. 새로 만드는 서버라면 이 줄을 빼고 짧은 레이아웃을 써도 됩니다.
+`TAPFLOW_HOME`만 두면 데이터는 `/var/lib/tapflow/data`에 놓입니다. 그런데도 `TAPFLOW_DATA_DIR`을 함께 적는 이유는, 설치 디렉토리 개념이 생기기 전에 구축한 서버와 같은 경로를 쓰기 위해서입니다. 새로 만드는 서버에서 짧은 레이아웃을 쓰려면 이 줄을 빼고 위 `mkdir`의 `/var/lib/tapflow/.tapflow/data`도 `/var/lib/tapflow/data`로 바꾸세요. 비어 있더라도 `.tapflow/data` 폴더가 있으면 릴레이는 그 폴더를 기존 데이터로 보고 계속 사용합니다.
 
 `JWT_SECRET`은 `openssl rand -hex 32`로 생성하고, `/etc/tapflow/relay.env`는 root만 읽을 수 있게 제한합니다:
 

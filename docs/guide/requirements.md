@@ -36,7 +36,7 @@ When a new major version (e.g. Xcode 28) is released, supporting it is our top p
 ### Android
 
 - Android SDK (`adb` in `$PATH` or `ANDROID_HOME` set)
-- An AVD using `google_apis/arm64-v8a` system image (android-34)
+- An AVD using `google_apis/arm64-v8a` system image (android-35)
 
 ## Dashboard
 

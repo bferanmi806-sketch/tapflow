@@ -32,22 +32,28 @@ tapflow status
 ```
 
 ```
-  ● mac-mini-office
+  ● agent  ◉ in use  ○ idle
+
+  ● mac-mini-office.local  (iOS)
       ○  iPhone 16 Pro
       ○  iPhone 15
 
-  ● mac-mini-lab
+  ● mac-mini-lab.local  (iOS)
       ○  iPhone 14
-      ○  Pixel 8
+
+  ● mac-mini-lab.local  (Android)
+      ○  tapflow-phone
+
+  3 agent(s) · 4 device(s) · 0 active session(s)
 ```
 
-에이전트 이름은 Mac의 시스템 호스트명에서 가져옵니다 (macOS에서 `scutil --get ComputerName`). 변경하려면 **시스템 설정 → 일반 → 공유 → 컴퓨터 이름**에서 수정합니다.
+에이전트 이름은 Node의 `os.hostname()` 값이며 macOS에서는 보통 `.local`이 붙은 로컬 호스트 이름입니다. 한 Mac에서 iOS와 Android 에이전트가 함께 돌면 같은 이름으로 두 줄이 나오고 이름 뒤의 `(iOS)`·`(Android)`로 구분합니다. 변경하려면 **시스템 설정 → 일반 → 공유**의 **로컬 호스트 이름**을 수정합니다.
 
 ## Mac당 디바이스 수
 
 iOS 시뮬레이터와 Android 에뮬레이터는 메모리를 많이 사용합니다. 일반적으로 Mac 한 대에서 RAM에 따라 2–4개를 동시에 실행할 수 있습니다.
 
-시뮬레이터·에뮬레이터는 대시보드를 통해 부팅·관리됩니다. 에이전트는 부팅된 디바이스만 릴레이에 보고하므로 팀원은 실제 사용 가능한 것만 볼 수 있습니다.
+시뮬레이터·에뮬레이터는 대시보드를 통해 부팅·관리됩니다. 에이전트는 부팅 여부와 관계없이 사용 가능한 디바이스를 모두 릴레이에 보고하고 팀원이 세션을 시작하면 필요한 디바이스를 부팅합니다.
 
 ## 모니터링
 
