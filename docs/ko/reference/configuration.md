@@ -171,7 +171,7 @@ chmod 600 .tapflow/data/.env
 | `TAPFLOW_IOS_MAX_SIZE` / `TAPFLOW_ANDROID_MAX_SIZE` | *(연결 방식별)* | `TAPFLOW_MAX_SIZE`의 플랫폼별 오버라이드. |
 | `TAPFLOW_ANDROID_FPS` | `30` | Android 에뮬레이터 캡처 프레임율(gRPC 경로). |
 | `TAPFLOW_ANDROID_BACKEND` | *(자동)* | Android 백엔드 강제 — `grpc` 또는 `scrcpy`. 미설정 시 디바이스 종류로 자동 선택. |
-| `TAPFLOW_ANDROID_GRPC_PORT` | `8554` | tapflow가 부팅하는 에뮬레이터에 gRPC 포트를 고를 때 시작하는 포트. 이 값부터 비어 있는 짝수 포트를 씁니다. |
+| `TAPFLOW_ANDROID_GRPC_PORT` | `8554` | tapflow가 부팅하는 에뮬레이터에 gRPC 포트를 고를 때 시작하는 포트. 이 값부터 2씩 올려 가며 비어 있는 첫 포트를 씁니다. |
 | `TAPFLOW_AUDIO` | *(켜짐)* | `off`이면 기기 오디오 스트리밍을 끕니다. [오디오](/ko/guide/audio)를 참고하세요. |
 | `TAPFLOW_ALLOW_DISPLAY_SLEEP` | *(비어있음)* | 값을 설정하면 세션 중에도 호스트 디스플레이가 꺼질 수 있습니다. 시스템 절전은 계속 막습니다. [에이전트 설정](/ko/guide/agent#호스트-디스플레이와-절전)을 참고하세요. |
 

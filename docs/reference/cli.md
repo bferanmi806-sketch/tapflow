@@ -113,7 +113,7 @@ Set this machine's tapflow up: `tapflow.config.json`, the `AGENTS.md` and `CLAUD
 
 Running it again keeps the configuration and refreshes the tapflow section of `AGENTS.md`, so an existing install can pick that up; pass `--force` to write a fresh configuration. `--tunnel` on an install that already has a configuration stops with an error instead, because keeping the configuration would ignore the flag.
 
-If no tunnel flag is given and the terminal is interactive, a prompt guides you through tunnel selection. If you pick no tunnel, it also asks about streaming performance (HTTPS) and Lean mode, and writes the answers to `tls` and `agent.lean` in the config. In a non-interactive environment with no `--tunnel` flag, a config file with no tunnel section is created.
+If no tunnel flag is given and the terminal is interactive, a prompt guides you through tunnel selection. If you pick no tunnel, it also asks about streaming performance (HTTPS). On a machine with simulators or emulators it asks about Lean mode too, whichever tunnel you pick. The answers go to `tls` and `agent.lean` in the config. In a non-interactive environment with no `--tunnel` flag, a config file with no tunnel section is created.
 
 ```sh
 tapflow init
@@ -345,7 +345,7 @@ Example output:
 
 ## `tapflow logs`
 
-Show the recent log entries the relay keeps in memory (last 100 lines by default). The only entries recorded in this buffer today are WebSocket connections rejected for missing credentials. The relay's full log goes to the terminal it runs in.
+Show the recent log entries the relay keeps in memory (last 100 lines by default). Few events are recorded in this buffer. The relay's full log goes to the terminal it runs in.
 
 ```sh
 tapflow logs

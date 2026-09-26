@@ -6,12 +6,12 @@
 - 대시보드 사용자: 세션 쿠키 (`tapflow_token`, 로그인 시 자동 설정)
 - CI/CD 스크립트: `Authorization: Bearer tflw_pat_<token>` 헤더
 
-PAT를 받는 엔드포인트는 아래뿐이며 나머지는 세션 쿠키로만 호출할 수 있습니다. 아래 엔드포인트도 세션 쿠키로 호출할 수 있습니다.
+아래 엔드포인트만 PAT를 받으며, 세션 쿠키로도 호출할 수 있습니다.
 
 | PAT scope | 엔드포인트 |
 |-----------|-----------|
 | `builds:write` | `POST /builds`, `GET /builds`, `GET /builds/:id`, `POST /comments`, 웹훅 엔드포인트 전체 |
-| `view` | `GET /apps`, `GET /sessions/:sessionId/screenshot`, `GET /sessions/:sessionId/ui-tree`, `/uploads/` 아래 파일 |
+| `view` | `GET /apps`, `GET /sessions/:sessionId/screenshot`, `GET /sessions/:sessionId/ui-tree`, `/uploads/` 아래 파일(`/api/v1/`이 아닌 relay 루트 경로) |
 
 
 ## 에러 응답
@@ -313,7 +313,7 @@ Authorization: Bearer tflw_pat_<token>  (또는 세션 쿠키)
 
 | 필드 | 필수 | 설명 |
 |------|------|------|
-| `file` | 필수 | 빌드 산출물. iOS는 `.app.zip` 또는 `.tar.gz`/`.tgz`(시뮬레이터 빌드), Android는 `.apk`입니다. 기본 최대 500MB이고(`TAPFLOW_MAX_BUILD_BYTES`로 조정) `.ipa`·`.aab`는 거부됩니다. |
+| `file` | 필수 | 빌드 산출물. iOS는 `.app.zip` 또는 `.tar.gz`/`.tgz`(시뮬레이터 빌드), Android는 `.apk`입니다. 최대 크기는 기본 500MB이며 `TAPFLOW_MAX_BUILD_BYTES`로 바꿀 수 있습니다. `.ipa`·`.aab`는 거부됩니다. |
 | `status` | 선택 | 초기 리뷰 상태로 `Backlog`, `In Progress`, `Done`, `Rejected` 중 하나입니다. 생략하면 미설정으로 둡니다. |
 | `label` | 선택 | App Center에서 빌드를 식별하는 자유 텍스트 레이블입니다(예: 브랜치명이나 `rc-1`). |
 | `platform` | 선택 | `ios` 또는 `android`입니다. 생략하면 파일 형식에서 자동으로 정해집니다. |

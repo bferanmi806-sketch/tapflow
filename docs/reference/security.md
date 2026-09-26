@@ -46,8 +46,8 @@ Programmatic access to tapflow is controlled by **Personal Access Tokens (PAT)**
 Here is what tapflow handles and what you manage as the infrastructure operator.
 
 **tapflow provides:**
-- API authentication: build upload and listing and webhooks require a signed-in session or a `builds:write` PAT; the app list, uploaded files, screenshots and UI trees require a signed-in session or a `view` PAT. The rest of the dashboard API accepts only a signed-in session.
-- Device stream (WebSocket) authentication: a remote connection needs a signed-in session or a PAT.
+- API authentication: build upload and listing, comments and webhooks accept a signed-in session or a `builds:write` PAT; the app list, uploaded files, screenshots and UI trees accept a signed-in session or a `view` PAT. The [REST API reference](/reference/api) lists which endpoints accept a PAT.
+- Device stream (WebSocket) authentication: a remote connection must present credentials, and a remote agent needs a PAT with the `agent` scope.
 - Sign-in for every connection that does not reach the relay port over loopback, including tunnel traffic, which arrives on a separate loopback port of its own
 - No outbound data transmission to external services
 

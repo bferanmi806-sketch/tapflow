@@ -46,8 +46,8 @@ tapflow의 프로그래밍 방식 접근은 **Personal Access Token(PAT)** 으�
 tapflow가 제공하는 보호 범위와 여러분이 직접 관리해야 하는 범위는 다음과 같습니다.
 
 **tapflow가 담당하는 것:**
-- API 인증: 빌드 업로드·조회와 웹훅은 로그인 세션 또는 `builds:write` PAT를, 앱 목록·업로드된 파일·스크린샷·UI 트리는 로그인 세션 또는 `view` PAT를 요구합니다. 그 밖의 대시보드 API는 로그인 세션으로만 호출할 수 있습니다.
-- 기기 스트림(WebSocket) 인증: 원격 연결은 로그인 세션이나 PAT가 있어야 합니다.
+- API 인증: 빌드 업로드·조회, 댓글, 웹훅은 로그인 세션 또는 `builds:write` PAT로, 앱 목록·업로드된 파일·스크린샷·UI 트리는 로그인 세션 또는 `view` PAT로 호출할 수 있습니다. PAT를 받는 엔드포인트 목록은 [REST API 레퍼런스](/ko/reference/api)에 있습니다.
+- 기기 스트림(WebSocket) 인증: 원격 연결은 자격 증명이 있어야 하며, 원격 에이전트는 `agent` scope PAT가 필요합니다.
 - 릴레이 포트에 loopback으로 들어오지 않은 모든 연결에 로그인 요구 (자체 loopback 포트로 들어오는 터널 트래픽 포함)
 - 외부 서비스로의 데이터 전송 없음
 

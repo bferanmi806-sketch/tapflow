@@ -74,7 +74,7 @@ LAN 실측입니다. 에이전트(빌드 머신)와 뷰어를 **서로 다른 Ma
 pnpm --filter @tapflowio/dashboard dev
 ```
 
-브라우저에서 `?perf=1`을 붙이면 패널이 열립니다. `?decoder=wasm`을 함께 붙이면 localhost처럼 보안 컨텍스트인 환경에서도 WASM 디코더를 강제하고 붙이지 않으면 브라우저가 자동으로 고른 디코더(보안 컨텍스트에서는 WebCodecs)를 씁니다. 다른 값은 무시됩니다. JPEG 경로는 에이전트에 `TAPFLOW_IOS_CODEC=jpeg`를 설정해 비교합니다. 크로스 머신 LAN 측정은 같은 LAN의 다른 Mac에서 뷰어를 띄워 진행합니다.
+브라우저에서 `?perf=1`을 붙이면 패널이 열립니다. `?decoder=wasm`을 함께 붙이면 localhost처럼 보안 컨텍스트인 환경에서도 WASM 디코더를 씁니다. 붙이지 않으면 브라우저가 자동으로 고른 디코더(보안 컨텍스트에서는 WebCodecs)를 씁니다. 다른 값은 무시됩니다. JPEG 경로는 에이전트에 `TAPFLOW_IOS_CODEC=jpeg`를 설정해 비교합니다. 크로스 머신 LAN 측정은 같은 LAN의 다른 Mac에서 뷰어를 띄워 진행합니다.
 
 전체 파이프라인 분석, 디코더 선정 과정, 누적된 측정 로그와 결정 기록은 엔지니어링 로그에 그대로 남아 있습니다 — [streaming-latency-log.md](https://github.com/jo-duchan/tapflow/blob/main/contributing/streaming-latency-log.md).
 

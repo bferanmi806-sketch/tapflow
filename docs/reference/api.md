@@ -6,12 +6,12 @@ All endpoints are served by the relay at `http(s)://<relay-host>/api/v1/`.
 - Dashboard users: session cookie (`tapflow_token`, set automatically on login)
 - CI/CD scripts: `Authorization: Bearer tflw_pat_<token>` header
 
-Only the endpoints below accept a PAT; everything else accepts only the session cookie. These endpoints accept the session cookie too.
+Only the endpoints below accept a PAT, and they accept the session cookie too.
 
 | PAT scope | Endpoints |
 |-----------|-----------|
 | `builds:write` | `POST /builds`, `GET /builds`, `GET /builds/:id`, `POST /comments`, every webhook endpoint |
-| `view` | `GET /apps`, `GET /sessions/:sessionId/screenshot`, `GET /sessions/:sessionId/ui-tree`, files under `/uploads/` |
+| `view` | `GET /apps`, `GET /sessions/:sessionId/screenshot`, `GET /sessions/:sessionId/ui-tree`, files under `/uploads/` (at the relay root, not under `/api/v1/`) |
 
 
 ## Error responses

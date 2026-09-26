@@ -169,7 +169,7 @@ These variables are set on the **agent** process (`tapflow agent start` / `tapfl
 | `TAPFLOW_IOS_MAX_SIZE` / `TAPFLOW_ANDROID_MAX_SIZE` | *(per connection)* | Per-platform override of `TAPFLOW_MAX_SIZE`. |
 | `TAPFLOW_ANDROID_FPS` | `30` | Android emulator capture frame rate (gRPC path). |
 | `TAPFLOW_ANDROID_BACKEND` | *(auto)* | Force the Android backend — `grpc` or `scrcpy`. Auto-selected by device type when unset. |
-| `TAPFLOW_ANDROID_GRPC_PORT` | `8554` | First port tried when picking a gRPC port for an emulator tapflow boots. The first free even port from here is used. |
+| `TAPFLOW_ANDROID_GRPC_PORT` | `8554` | First port tried when picking a gRPC port for an emulator tapflow boots. The first free port from here, stepping by 2, is used. |
 | `TAPFLOW_AUDIO` | *(on)* | `off` turns off device audio streaming. See [Audio](/guide/audio). |
 | `TAPFLOW_ALLOW_DISPLAY_SLEEP` | *(empty)* | Any value lets the host display sleep during a session. System sleep is still prevented. See [Agent Setup](/guide/agent#host-display-and-sleep). |
 
