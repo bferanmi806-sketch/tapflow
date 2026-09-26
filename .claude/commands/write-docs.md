@@ -158,7 +158,7 @@ KO 헤딩은 `사용 방법 / 플랫폼 지원 / 제한 사항 / 설정(운영�
 
 ## 7. 작성 규칙
 
-한/영 동시 작성(KO가 소스, 구조 일치), 플랫폼 중립 언어, 코드블럭 `<placeholder>` 금지, `---` 구분선 금지는 `docs/AGENTS.md`를 따른다.
+한/영 동시 작성(KO가 소스, 구조 일치), 플랫폼 중립 언어, **용어집, 제목, 한 페이지 한 주제(H4 기준), 문장 주체**, 코드블럭 `<placeholder>` 금지, `---` 구분선 금지는 `docs/AGENTS.md`를 따른다. 특히 용어집에 없는 표기를 새로 만들지 않는다.
 
 ### 한국어 작성 원칙
 
@@ -227,7 +227,7 @@ run: |
 3. KO 작성 → EN 번역(KO 기반)
 4. 사실이 바뀌었다면 `docs/` 전체 grep 후 다른 출현도 EN/KO 모두 수정
 5. 새 페이지라면 사이드바 EN/KO와 `llms.txt`에 등록(필요하면 테스트의 페이지 수도 수정)
-6. 소스 대조(작성 후)
+6. 소스 대조(작성 후), 그리고 `docs/AGENTS.md` 용어집 대조(산문의 표기가 표와 같은지)
 7. `pnpm docs:build`, 새 페이지였다면 `pnpm test:scripts`. 오류가 나면 고치고 다시 돌린다. `docs:build`는 없는 페이지 링크만 잡고 `#앵커`는 잡지 않으므로 바꾼 앵커 링크는 직접 확인한다.
 8. **AI tells detect 게이트**: KO 산문은 `.claude/ai-tells/rules-ko.md`로, EN 산문은 `.claude/ai-tells/rules-en.md`로 `detect`한다. 두 파일의 **docs carve-out**(격식체 종결 균일, glossary 볼드, `~할 수 있습니다` 기능 서술, em dash 단문 closing)을 적용하고, 코드·수치·테이블·frontmatter는 건드리지 않는다.
    - **detect는 게이트일 뿐 자동으로 고치지 않는다. `rewrite`를 자동 호출하지 않는다.** P0/P1(EN)과 S1(KO)을 완료 보고에 적고 **사람 판단**을 받는다. (정책: `/ai-tells` 커맨드 §0)
@@ -246,6 +246,9 @@ run: |
 - `tapflow setup` AVD 이미지 android-35 → packages/cli/src/lib/setup.ts:29
 - {주장} → {file:line}
 - 미확인: {소스에서 못 찾아 쓰지 않은 것 | 없음}
+
+## 용어집 대조
+- 표에 없는 표기 {없음 | 목록}, 새로 추가한 용어 행 {없음 | 목록}
 
 ## 같은 사실의 다른 출현
 - grep "{패턴}" docs/ → {고친 파일 목록 | 없음}
