@@ -24,6 +24,11 @@
 // real-tree assertion can see each kind of drift. Mutations also run by hand against the real files
 // on 2026-09-26: deleting the `--lines` row from `docs/reference/cli.md` failed the EN case; renaming
 // `--artifacts` in `program.ts` failed both locales in both directions.
+//
+// **Not seen**: a subcommand's existence comes from its description's `(subcommand: …)` list, not from
+// the action's dispatch, so deleting a branch while keeping the description stays green. Short-only
+// options (`-x`) are ignored both ways, and an invocation inside a fenced block is not checked against
+// real commands.
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'

@@ -81,7 +81,7 @@ jobs:
               # `docs`, for the job of that name: the pages, the lockfile (a VitePress bump changes the
               # build) and the root manifest (where `docs:build` is defined). Same collected list, same
               # fail-safe default.
-              if grep -qE '^(docs/|pnpm-lock\.yaml$|package\.json$|\.github/workflows/ci\.yml$)' <<<"$files"; then
+              if grep -qE '^(docs/|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|package\.json$|\.nvmrc$|\.github/workflows/ci\.yml$)' <<<"$files"; then
                 docs=true
               else
                 docs=false

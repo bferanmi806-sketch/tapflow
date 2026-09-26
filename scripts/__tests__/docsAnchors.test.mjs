@@ -37,6 +37,10 @@
 //  - the fragment in `PerformanceModeNotice.tsx` edited instead: the named-URL assertion failed.
 //  - before `<a name>` counted as a target, the real tree reported ten false misses on the
 //    performance footnotes — the check was wrong, not the page, and the fixture now carries one.
+//
+// **Not seen**: fragments in frontmatter hero `link:`s and in `config.ts` nav/sidebar links (they are
+// not rendered markdown; none carry a `#` today), and URLs in `.js`/`.mjs`/`.swift` files under
+// packages/ (none today). Shipped URLs are read from `.ts`/`.tsx` sources and the READMEs.
 import { describe, it, expect, beforeAll } from 'vitest'
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, posix } from 'node:path'
@@ -206,8 +210,11 @@ describe('docs fragment links land on an id', () => {
 })
 
 describe('the docs URLs shipped code opens land on an id', () => {
-  it('every tapflow.dev URL with a #fragment under packages/', () => {
-    const files = sources('packages')
+  it('every tapflow.dev URL with a #fragment under packages/ and in the READMEs', () => {
+    // The READMEs ship too: the root one on GitHub, packages/cli's on npm (it is in `files`).
+    const readmes = ['README.md', ...readdirSync(join(ROOT, 'packages')).map((p) => `packages/${p}/README.md`)]
+      .filter((f) => existsSync(join(ROOT, f)))
+    const files = [...sources('packages'), ...readmes]
     const urls = shippedUrls(files)
     // Named, because these two are why the check exists — the first two a docs reorganisation would
     // break (DOCS-AUDIT-PLAN). A walk that stopped reaching `packages/dashboard/components` or the
@@ -215,6 +222,7 @@ describe('the docs URLs shipped code opens land on an id', () => {
     expect(urls.map((u) => u.url)).toEqual(expect.arrayContaining([
       'https://www.tapflow.dev/reference/configuration#https-secure-context',
       'https://www.tapflow.dev/guide/troubleshooting#ios-simulator-service-version-mismatch',
+      'https://www.tapflow.dev/guide/self-hosting#docker-compose-lan-server',
     ]))
     expect(brokenShipped(urls, renderSite())).toEqual([])
   })

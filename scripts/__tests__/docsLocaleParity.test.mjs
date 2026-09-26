@@ -22,6 +22,8 @@
 // The only page that has them is allowed exactly the count it has, and the allowance must be removed
 // when the page is split — an entry that no longer matches fails too, so it cannot outlive its reason.
 //
+// Setext headings and HTML `<h2>` are not counted as headings (the docs use neither).
+//
 // Headings are read from the source rather than the rendered page, skipping frontmatter and fenced
 // blocks. A `####` inside a code fence is an example of the syntax, not a heading, and the fixtures
 // carry one on purpose (rule 5 of `contributing/test-and-guard-coverage.md`: the fixture must carry

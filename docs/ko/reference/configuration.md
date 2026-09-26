@@ -104,6 +104,8 @@ openssl rand -hex 32
 
 ## Docker 컨테이너에서 첫 관리자 계정 만들기 (`TAPFLOW_ADMIN_EMAIL`) {#create-the-first-admin-account-in-a-docker-container-tapflow-admin-email}
 
+<a name="docker-컨테이너에서-첫-관리자-계정-만들기-tapflow-admin-email"></a>
+
 두 변수를 설정하면 릴레이가 시작하면서 첫 Admin 계정을 만듭니다. 브라우저 온보딩과 `tapflow admin init`이 모두 닿지 않는 Docker 설치를 위한 경로입니다.
 
 평소에는 브라우저에서 `/setup` 페이지로 첫 계정을 만듭니다. 브라우저를 쓸 수 없는 서버에서는 `tapflow admin init`이 그 자리를 대신합니다. 컨테이너에서는 둘 다 막힙니다. `/setup`은 루프백에서 온 요청에만 응답하는데 컨테이너는 브리지 게이트웨이를 거쳐서 그 검사에 걸립니다. 그리고 릴레이 전용 이미지에는 CLI가 들어 있지 않습니다.
