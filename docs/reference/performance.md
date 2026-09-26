@@ -74,7 +74,7 @@ Performance instrumentation is on only in the dev build (Vite `:3001`); you forc
 pnpm --filter @tapflowio/dashboard dev
 ```
 
-In the browser, append `?perf=1` to open the panel. Adding `?decoder=wasm` forces the WASM decoder even in a secure context such as localhost; without it the browser's automatic pick is used (WebCodecs in a secure context). Other values are ignored. To compare the JPEG path, set `TAPFLOW_IOS_CODEC=jpeg` on the agent. For a cross-machine LAN measurement, open the viewer on another Mac on the same LAN.
+In the browser, append `?perf=1` to open the panel. Adding `?decoder=wasm` forces the WASM decoder even in a secure context such as localhost; without it the automatic pick is used: WebCodecs when the page is a secure context with WebCodecs and WebGL2, otherwise WASM when WebGL2 is available. Other values are ignored. To compare the JPEG path, set `TAPFLOW_IOS_CODEC=jpeg` on the agent. For a cross-machine LAN measurement, open the viewer on another Mac on the same LAN.
 
 The full pipeline analysis, decoder selection process, and the accumulated measurement log and decision record remain in the engineering log as-is — [streaming-latency-log.md](https://github.com/jo-duchan/tapflow/blob/main/contributing/streaming-latency-log.md).
 

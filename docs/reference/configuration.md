@@ -252,7 +252,7 @@ With your own domain and a DNS provider API token, the relay auto-issues and ren
 | `tls.publishAddress` | Auto-publish the domain's A record to this machine's LAN IP. Default `true`; set `false` to manage DNS yourself. |
 | `tls.address` | IP to use instead of the auto-detected LAN IP, for multi-NIC or VPN overrides. |
 
-API tokens go in the `.env` file that `tapflow init` scaffolds in the data directory (`~/.tapflow/data/.env` by default), not in the config file. Cloudflare uses `TAPFLOW_CLOUDFLARE_TOKEN` and Vercel uses `TAPFLOW_VERCEL_TOKEN`, plus `TAPFLOW_VERCEL_TEAM_ID` for a team domain. The file stays out of git because `.tapflow/data/` is gitignored. A value set directly in the environment takes precedence over the file. See [Configuring tapflow](/guide/configure) for how the file is scaffolded and read.
+API tokens go in the `.env` file that `tapflow init` scaffolds in the data directory (`~/.tapflow/data/.env` by default), not in the config file. Cloudflare uses `TAPFLOW_CLOUDFLARE_TOKEN` and Vercel uses `TAPFLOW_VERCEL_TOKEN`, plus `TAPFLOW_VERCEL_TEAM_ID` for a team domain. When the install directory is inside a git repository, `tapflow init` adds the data directory to `.gitignore` so the file is not committed. If you point the data directory somewhere else, make sure that path is ignored too. A value set directly in the environment takes precedence over the file. See [Configuring tapflow](/guide/configure) for how the file is scaffolded and read.
 
 When `publishAddress` is on, the relay publishes its LAN IP to the domain's A record on boot and refreshes it periodically, so teammates just open the domain without touching DNS.
 
@@ -286,7 +286,7 @@ At startup, tapflow advertises the first concrete DNS SAN other than `localhost`
 
 ## Data directory
 
-The install directory is laid out as follows. `tapflow init` writes `tapflow.config.json`, `AGENTS.md` and `CLAUDE.md`; the relay creates everything under `data/` as it runs.
+The install directory is laid out as follows. `tapflow init` writes `tapflow.config.json`, `AGENTS.md`, `CLAUDE.md` and `data/.env`; the relay creates the rest of `data/` as it runs.
 
 ```text
 ~/.tapflow/
