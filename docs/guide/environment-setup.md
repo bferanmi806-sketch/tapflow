@@ -27,7 +27,7 @@ It checks the following:
 
 Each item shows as **✓ ready**, **⚠ attention**, or **✗ needs install**. It does not check whether a device is running — booting happens automatically when someone opens a session in the dashboard, so a single bootable device is enough to pass.
 
-The port check always looks at 4000, whatever port your config sets. If the relay is running on the same Mac, that check fails and doctor exits with code `1`, so run it with the relay stopped or ignore that line.
+The port check always looks at 4000, whatever port your config sets. If something already holds port 4000 (such as a relay on the default port), that check fails and doctor exits with code `1`, so run it with the relay stopped or ignore that line.
 
 To parse the result from automation or CI, use `--json` for machine-readable output.
 

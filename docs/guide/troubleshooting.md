@@ -394,7 +394,7 @@ Add these lines to `~/.zshrc` (or `~/.bashrc`) to make the change permanent, the
 
 ### Session ends automatically
 
-A session auto-closes 5 minutes after the browser disconnects. While a browser stays connected, the session does not time out, even with no input. Change the delay with the relay's `IDLE_TIMEOUT_MS` environment variable (in milliseconds). Reconnect from the dashboard.
+5 minutes after the browser disconnects, the relay asks the agent to shut the device down. While a browser stays connected, nothing times out, even with no input. Change the delay with the relay's `IDLE_TIMEOUT_MS` environment variable (in milliseconds). Reconnect from the dashboard.
 
 ## Stream lag or stuttering {#stream-lag}
 

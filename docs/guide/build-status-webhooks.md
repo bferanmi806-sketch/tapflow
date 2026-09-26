@@ -23,7 +23,7 @@ For automated testing where an LLM agent controls the simulator, see [MCP in CI/
 
 There are two ways to register. Declare endpoints in `tapflow.config.json` if you manage settings as files, or use the REST API to add and remove them at runtime. Endpoints from both sources are delivered together.
 
-### Declare in config.json (recommended)
+### Declare in tapflow.config.json (recommended) {#declare-in-config-json-recommended}
 
 Add entries to the `webhooks` array in `tapflow.config.json`. This keeps webhooks in the same file a self-hosted operator already uses for TLS, SMTP, and the rest.
 

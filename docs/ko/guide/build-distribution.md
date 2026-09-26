@@ -108,6 +108,10 @@ $GIT_COMMIT_MSG"
 
 이 예시는 relay 내부 주소에 닿는 self-hosted macOS 러너를 가정합니다. relay를 [VPS + rathole 터널](#how-ci-reaches-the-relay)처럼 공개 URL로 열어 두었다면 `runs-on`을 `macos-latest` 같은 클라우드 러너로 바꿔도 됩니다.
 
+::: warning self-hosted 러너와 pull request
+self-hosted 러너는 워크플로가 체크아웃한 코드를 내부 네트워크의 Mac에서 그대로 실행합니다. 아래의 `if:`는 포크에서 연 pull request를 건너뛰므로 같은 저장소의 브랜치만 이 러너에서 빌드됩니다. 이 조건을 지우지 말고, 외부 pull request를 받는 공개 저장소에는 self-hosted 러너를 연결하지 마세요.
+:::
+
 ```yaml
 name: tapflow에 업로드
 
@@ -118,6 +122,7 @@ on:
 
 jobs:
   upload:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, macos]
 
     steps:

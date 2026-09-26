@@ -108,6 +108,10 @@ $GIT_COMMIT_MSG"
 
 This example assumes a self-hosted macOS runner that can reach the relay's internal address. If you have opened the relay on a public URL, as with [VPS + rathole](#how-ci-reaches-the-relay), you can switch `runs-on` to a cloud runner such as `macos-latest`.
 
+::: warning Self-hosted runners and pull requests
+A self-hosted runner executes whatever code the workflow checks out, on a Mac inside your network. The `if:` below skips pull requests opened from forks, so only branches in your own repository build there. Keep it, and don't attach self-hosted runners to a public repository that accepts outside pull requests.
+:::
+
 ```yaml
 name: Upload to tapflow
 
@@ -118,6 +122,7 @@ on:
 
 jobs:
   upload:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, macos]
 
     steps:

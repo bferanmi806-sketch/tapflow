@@ -50,7 +50,7 @@ On your Mac, run:
 tapflow start
 ```
 
-It prints the install, config and data paths first, then a banner like the one below once the relay and agent are ready. If an Android environment is present, an `android` agent connects too.
+It prints the install, config and data paths first, then a banner like the one below once the relay and agent are ready. If an Android environment is present, an `android` agent connects too. If the first agent fails to connect, `start` stops with an error banner; an agent that fails after another has connected is reported on a ⚠ line and the rest keep running.
 
 ```text
   →  Relay started on http://localhost:4000

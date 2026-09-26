@@ -35,7 +35,7 @@ Once signed in as Admin, go to **Settings → Team** and create invite links:
 
 1. Click **Invite member**.
 2. Enter the team member's email and select a role:
-   - **Admin** — can do everything. Inviting members, changing roles, removing members, resetting passwords, workspace settings and the **Settings → Tokens** page are Admin-only.
+   - **Admin** — can do everything except remove their own account. Inviting members, changing roles, removing members, resetting passwords, workspace settings and the **Settings → Tokens** page are Admin-only.
    - **Developer** — can add, edit and delete apps.
    - **QA**, **Viewer** — can do the shared actions below. The server does not currently tell these two roles apart.
 
