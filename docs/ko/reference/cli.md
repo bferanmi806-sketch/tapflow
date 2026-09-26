@@ -36,9 +36,9 @@ tapflow doctor android
 
 검사 항목은 다음과 같습니다(디바이스/AVD는 *존재*하기만 하면 됩니다. 부팅은 릴레이가 필요할 때 처리합니다).
 
-- **Common**: Node.js 버전
-- **iOS** (macOS만): Xcode, `xcrun simctl`, 사용 가능한 시뮬레이터, 네트워크 필터, 네트워크 훅
-- **Android**: Android SDK, adb, AVD
+- **Common**: Node.js 버전, 포트 4000 사용 가능 여부. 이 Mac에서 릴레이가 4000 포트로 실행 중이면 이 항목이 실패합니다.
+- **iOS** (macOS만): Xcode, `xcrun simctl`, 사용 가능한 시뮬레이터, 네트워크 필터, 네트워크 훅, 네트워크 훅 심볼, Lean mode
+- **Android**: Android SDK, adb, aapt(build-tools), AVD, Lean mode
 
 네트워크 필터는 두 항목으로 나뉩니다. 실패하는 이유가 다르기 때문입니다 — **설치·승인·켜져 있는가**, 그리고 이 맥의 버전들이 이 tapflow가 싣고 온 것과 같은가. 켜져 있는지는 자기 버전이 없는 세 번째 조건입니다. 필터를 꺼도 확장은 활성 상태로 남으므로, 버전은 전부 맞는데 아무것도 필터링하지 않는 상태가 생깁니다.
 
@@ -66,7 +66,7 @@ tapflow setup ios
 tapflow setup android
 ```
 
-한 번 실행으로 끝까지 진행하면서 설치 단계마다 동의를 구합니다(대화형 터미널만 해당. 비대화형에서는 실행 대신 명령을 안내합니다).
+한 번 실행으로 끝까지 진행하면서 설치 단계마다 동의를 구합니다(대화형 터미널만 해당. 비대화형에서는 실행 대신 명령을 안내합니다). 두 플랫폼 모두 Homebrew가 없으면 먼저 설치합니다.
 
 - **iOS**: App Store에서 Xcode 설치를 안내하고 라이선스 동의·초기 설정을 실행하며(sudo 필요) 시뮬레이터 런타임을 내려받습니다.
 - **Android**: JDK를 설치하고 `~/Library/Android/sdk`에 자기완결 SDK(명령행 도구·platform-tools·에뮬레이터·시스템 이미지 — Android Studio GUI 불필요)를 구성한 뒤 폼팩터별 AVD를 생성합니다.
@@ -92,7 +92,7 @@ setup은 부팅 가능한 디바이스/AVD를 준비하는 데까지만 하며 �
 
 다시 실행하면 설정은 그대로 두고 `AGENTS.md`의 tapflow 섹션만 갱신하므로, 기존 설치도 이 문서를 받을 수 있습니다. 설정을 새로 만들려면 `--force`를 씁니다. 이미 설정이 있는데 `--tunnel`을 주면 오류로 멈춥니다. 설정을 유지하면 그 플래그를 무시하게 되기 때문입니다.
 
-터널 플래그 없이 대화형 터미널에서 실행하면 터널 선택 화면이 표시됩니다. 비대화형 환경에서 `--tunnel` 없이 실행하면 터널 없는 기본 설정 파일이 생성됩니다.
+터널 플래그 없이 대화형 터미널에서 실행하면 터널 선택 화면이 표시됩니다. 터널을 고르지 않으면 스트리밍 성능(HTTPS)도 묻습니다. 시뮬레이터나 에뮬레이터가 있는 머신에서는 어떤 터널을 고르든 Lean mode도 묻습니다. 답은 설정 파일의 `tls`와 `agent.lean`에 적힙니다. 비대화형 환경에서 `--tunnel` 없이 실행하면 터널 없는 기본 설정 파일이 생성됩니다.
 
 ```sh
 tapflow init
@@ -132,9 +132,9 @@ TAPFLOW_HOME=/var/lib/tapflow tapflow init
 
 ## `tapflow admin init`
 
-CLI에서 최초 관리자 계정을 생성합니다. 브라우저를 사용할 수 없는 환경(헤드리스 서버, CI)에서 폴백으로 사용합니다.
+CLI에서 최초 관리자 계정을 생성합니다. 브라우저를 사용할 수 없는 서버에서 폴백으로 사용합니다.
 
-이 명령어 실행 전에 릴레이가 먼저 구동 중이어야 합니다.
+이 명령어 실행 전에 릴레이가 먼저 구동 중이어야 합니다. 이메일과 비밀번호를 물어보므로 대화형 터미널이 필요하고 터미널이 없으면(CI 등) 종료 코드 `1`로 끝납니다. 릴레이는 같은 머신(localhost)에서 온 요청으로만 첫 계정을 만들기 때문에 `--relay`로 원격 릴레이를 가리키면 `403`을 받습니다. 릴레이가 실행 중인 머신에서 실행하세요.
 
 ```sh
 tapflow admin init
@@ -162,7 +162,7 @@ tapflow admin init
 
 ## `tapflow start`
 
-**로컬 개발 전용 shortcut.** 릴레이와 에이전트를 같은 Mac에서 한 번에 시작합니다.
+릴레이와 에이전트를 같은 Mac에서 한 번에 시작합니다. Mac 한 대로 운영할 때 쓰는 명령입니다. 실행할 수 있는 플랫폼이 없으면 릴레이만 시작합니다.
 
 ```sh
 tapflow start
@@ -171,7 +171,7 @@ tapflow start
 | 옵션 | 설명 |
 |------|------|
 | `--platform <ios\|android\|all>` | 시작할 플랫폼 (기본값: 자동 감지) |
-| `--device <name>` | 릴레이에 노출할 iOS 시뮬레이터를 이름 또는 UDID로 한정합니다(기본값: 전체). 부팅은 대시보드에서 필요할 때 이뤄집니다. |
+| `--device <name>` | 릴레이에 노출할 기기를 한정합니다(기본값: 전체). iOS 시뮬레이터는 이름 또는 UDID, Android 에뮬레이터는 AVD 이름 또는 기기 ID로 지정합니다. 부팅은 대시보드에서 필요할 때 이뤄집니다. |
 
 ::: info 팀 운영 환경에서는
 릴레이를 서버에 따로 배포한다면 `tapflow relay start`와 `tapflow agent start`를 사용하세요.
@@ -188,8 +188,8 @@ tapflow relay start
 
 | 옵션 | 기본값 | 설명 |
 |------|--------|------|
-| `--port <n>` | `4000` | 리슨 포트 |
-| `--tunnel <provider>` | — | 사용할 터널 프로바이더 (`tailscale` 또는 `rathole`). `tapflow.config.json`의 `tunnel` 섹션이 필요합니다 |
+| `--port <n>` | `local.port` (기본 `4000`) | 리슨 포트 |
+| `--tunnel <provider>` | — | `tailscale` 또는 `rathole`. `tapflow.config.json`에 `tunnel` 섹션이 없으면 오류로 멈춥니다. 실제로 띄우는 터널은 이 값과 관계없이 `tunnel` 섹션이 정합니다. `tunnel` 섹션이 있으면 이 플래그 없이도 터널을 띄웁니다. |
 
 **Tailscale (권장)**
 
@@ -211,7 +211,7 @@ tapflow가 Tailscale MagicDNS 호스트명을 자동으로 읽어 URL을 구성�
 
 **VPS + rathole**
 
-`TAPFLOW_TUNNEL_TOKEN`을 `.tapflow/data/.env`에 적은 뒤 실행합니다:
+`TAPFLOW_TUNNEL_TOKEN`을 데이터 디렉토리의 `.env`(기본값 `~/.tapflow/data/.env`)에 적은 뒤 실행합니다:
 
 ```sh
 tapflow relay start
@@ -238,7 +238,7 @@ tapflow relay start
 
 터널이 연결되면 배너에 공개 URL이 출력됩니다. 터널 연결에 실패해도 릴레이는 계속 동작합니다 — 터널만 사용 불가 상태가 됩니다.
 
-전체 세팅 방법은 [릴레이 배포](/ko/guide/self-hosting)를 참고하세요.
+`tunnel` 키 전체는 [설정 파일](/ko/reference/configuration#터널)에 있습니다. 전체 세팅 방법은 [릴레이 배포](/ko/guide/self-hosting)를 참고하세요.
 
 
 ## `tapflow agent start`
@@ -253,8 +253,10 @@ tapflow agent start --relay ws://192.168.x.x:4000 --token tflw_pat_xxxxxxxx
 |------|--------|------|
 | `--relay <url>` | config의 `relay.url`, 없으면 `ws://localhost:4000` | 릴레이 WebSocket URL. `tapflow.config.json`에 `relay.url`이 있으면 생략 가능. |
 | `--platform <ios\|android\|all>` | 자동 감지 | 시작할 플랫폼 |
-| `--device <name>` | 전체 시뮬레이터 | 릴레이에 노출할 iOS 시뮬레이터를 이름 또는 UDID로 한정 |
+| `--device <name>` | 전체 기기 | 릴레이에 노출할 기기를 한정. iOS 시뮬레이터는 이름 또는 UDID, Android 에뮬레이터는 AVD 이름 또는 기기 ID |
 | `--token <pat>` | `TAPFLOW_AGENT_TOKEN` 환경변수 | 원격 릴레이가 요구하는 `agent` 스코프 토큰. [에이전트 설정](/ko/guide/agent#원격-릴레이-인증)을 참고하세요. |
+
+`--relay`는 `ws://` 또는 `wss://`로 시작해야 합니다. Mac 한 대에서는 플랫폼마다 에이전트를 하나만 실행할 수 있습니다. 같은 플랫폼의 에이전트가 이미 실행 중이면 `AGENT ALREADY RUNNING`을 출력하고 종료합니다. 실행할 수 있는 플랫폼이 없으면 종료 코드 `1`로 끝납니다.
 
 
 ## `tapflow devices`
@@ -312,7 +314,7 @@ tapflow status
 출력 예시:
 
 ```
-  ● mac-mini-office
+  ● mac-mini-office  (iOS)
       ◉  iPhone 16 Pro   ← qa@company.com
       ○  iPhone 15
 
@@ -322,7 +324,7 @@ tapflow status
 
 ## `tapflow logs`
 
-릴레이의 최근 로그를 출력합니다 (기본값: 최근 100줄).
+릴레이가 메모리에 보관하는 최근 로그 항목을 출력합니다(기본값: 최근 100줄). 이 버퍼에 기록되는 이벤트는 많지 않습니다. 릴레이의 전체 로그는 릴레이를 실행한 터미널에 출력됩니다.
 
 ```sh
 tapflow logs
@@ -332,6 +334,34 @@ tapflow logs
 |------|--------|------|
 | `--relay <url>` | config의 `relay.url`, 없으면 `http://localhost:4000` | 릴레이 URL. `tapflow.config.json`에 `relay.url`이 있으면 생략 가능. |
 | `--lines <n>` | `100` | 표시할 로그 줄 수 (최대 500) |
+
+## `tapflow flow run`
+
+저장된 플로우 파일을 LLM 없이 재생합니다. 플로우 작성법은 [플로우 레퍼런스](/ko/guide/writing-flows)를 참고하세요.
+
+```sh
+tapflow flow run .tapflow/flows/login-smoke.yaml
+```
+
+| 옵션 | 기본값 | 설명 |
+|------|--------|------|
+| `--relay <url>` | `ws://localhost:4000` | 릴레이 WebSocket URL. `relay.url` 설정을 읽지 않습니다. |
+| `--token <token>` | `TAPFLOW_TOKEN` 환경변수 | 원격 릴레이에 접속할 PAT |
+| `--session <id>` | — | 대상 세션 ID |
+| `--device <name>` | — | 대상 기기 이름. 꺼져 있으면 부팅합니다. |
+| `--build <id>` | — | 테스트할 빌드 ID. 실행 전에 설치하고 `launchApp` 스텝이 이 빌드를 실행합니다. |
+| `--no-install` | — | `--build`를 설치하지 않고 실행 |
+| `--junit <path>` | — | JUnit XML 리포트를 쓸 경로 |
+| `--artifacts <dir>` | `.tapflow/artifacts` | 실패 스크린샷을 저장할 디렉토리 |
+| `--timeout <seconds>` | `10` | 셀렉터마다 기다리는 기본 시간(초) |
+
+`--session`과 `--device`를 모두 생략하면 부팅된 기기가 정확히 하나일 때 그 기기를 씁니다. 부팅된 기기가 없거나 여러 대면 환경 오류로 멈춥니다.
+
+| 종료 코드 | 의미 |
+|-----------|------|
+| `0` | 모든 플로우 통과 |
+| `1` | 하나 이상의 플로우가 제품 문제로 실패 |
+| `2` | 환경·설정 오류, 또는 실패한 플로우가 모두 환경 문제 |
 
 ## `tapflow migrate`
 

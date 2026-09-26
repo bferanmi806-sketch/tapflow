@@ -36,9 +36,9 @@ tapflow doctor android
 
 Checks (a device/AVD only needs to *exist* — booting is on-demand via the relay):
 
-- **Common**: Node.js version
-- **iOS** (macOS only): Xcode, `xcrun simctl`, an available simulator, the network filter, and the network hook
-- **Android**: Android SDK, adb, AVD
+- **Common**: Node.js version, and whether port 4000 is free. This check fails while a relay is running on port 4000 on this Mac.
+- **iOS** (macOS only): Xcode, `xcrun simctl`, an available simulator, the network filter, the network hook, the network hook symbols, and Lean mode
+- **Android**: Android SDK, adb, aapt (build-tools), AVD, and Lean mode
 
 The network filter is reported as two checks, because they fail for different reasons: whether it is
 **installed, approved and switched on**, and whether the versions on this Mac are the ones this
@@ -80,7 +80,7 @@ tapflow setup ios
 tapflow setup android
 ```
 
-Runs in one pass, asking for consent before each install (interactive terminals only; non-interactive runs print the command instead):
+Runs in one pass, asking for consent before each install (interactive terminals only; non-interactive runs print the command instead). On both platforms it installs Homebrew first when it is missing.
 
 - **iOS**: opens the App Store for Xcode, accepts the license / runs first-launch (needs sudo), downloads a simulator runtime.
 - **Android**: installs a JDK, builds a self-contained SDK at `~/Library/Android/sdk` (command-line tools, platform-tools, emulator, system image — no Android Studio GUI), and creates a set of AVDs across form factors.
@@ -113,7 +113,7 @@ Set this machine's tapflow up: `tapflow.config.json`, the `AGENTS.md` and `CLAUD
 
 Running it again keeps the configuration and refreshes the tapflow section of `AGENTS.md`, so an existing install can pick that up; pass `--force` to write a fresh configuration. `--tunnel` on an install that already has a configuration stops with an error instead, because keeping the configuration would ignore the flag.
 
-If no tunnel flag is given and the terminal is interactive, a prompt guides you through tunnel selection. In a non-interactive environment with no `--tunnel` flag, a config file with no tunnel section is created.
+If no tunnel flag is given and the terminal is interactive, a prompt guides you through tunnel selection. If you pick no tunnel, it also asks about streaming performance (HTTPS). On a machine with simulators or emulators it asks about Lean mode too, whichever tunnel you pick. The answers go to `tls` and `agent.lean` in the config. In a non-interactive environment with no `--tunnel` flag, a config file with no tunnel section is created.
 
 ```sh
 tapflow init
@@ -153,9 +153,9 @@ TAPFLOW_HOME=/var/lib/tapflow tapflow init
 
 ## `tapflow admin init`
 
-Create the first admin account on the relay via CLI. Use this as a fallback when a browser is not available (headless servers, CI).
+Create the first admin account on the relay via CLI. Use this as a fallback on a server where a browser is not available.
 
-The relay must be running before executing this command.
+The relay must be running before executing this command. It prompts for an email and a password, so it needs an interactive terminal; without one (in CI, for example) it exits with code `1`. The relay only creates the first account for a request from its own machine (localhost), so pointing `--relay` at a remote relay gets a `403`. Run it on the machine where the relay runs.
 
 ```sh
 tapflow admin init
@@ -183,7 +183,7 @@ On first launch, the dashboard automatically redirects to `/setup` where you can
 
 ## `tapflow start`
 
-**Local development shortcut.** Starts the relay and agent together on the same Mac.
+Starts the relay and agent together on the same Mac. This is the command for running tapflow on a single Mac. When no platform is available, it starts the relay alone.
 
 ```sh
 tapflow start
@@ -192,7 +192,7 @@ tapflow start
 | Option | Description |
 |--------|-------------|
 | `--platform <ios\|android\|all>` | Platform to start (default: auto-detect) |
-| `--device <name>` | Limit which iOS simulators are exposed to the relay, by name or UDID (default: all). The dashboard boots a device on demand. |
+| `--device <name>` | Limit which devices are exposed to the relay (default: all): iOS simulators by name or UDID, Android emulators by AVD name or device ID. The dashboard boots a device on demand. |
 
 ::: info For team deployments
 If you are running the relay on a separate server, use `tapflow relay start` and `tapflow agent start` instead.
@@ -209,8 +209,8 @@ tapflow relay start
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--port <n>` | `4000` | Port to listen on |
-| `--tunnel <provider>` | — | Tunnel provider to use (`tailscale` or `rathole`). Requires a `tunnel` section in `tapflow.config.json` |
+| `--port <n>` | `local.port` (default `4000`) | Port to listen on |
+| `--tunnel <provider>` | — | `tailscale` or `rathole`. Stops with an error when `tapflow.config.json` has no `tunnel` section. The tunnel that starts is decided by the `tunnel` section whatever this value is, and a `tunnel` section starts it without this flag too. |
 
 **Tailscale (recommended)**
 
@@ -232,7 +232,7 @@ tapflow reads the Tailscale MagicDNS hostname automatically. Set `"publicUrl"` t
 
 **VPS + rathole**
 
-Put `TAPFLOW_TUNNEL_TOKEN` in `.tapflow/data/.env`, then:
+Put `TAPFLOW_TUNNEL_TOKEN` in the data directory's `.env` (`~/.tapflow/data/.env` by default), then:
 
 ```sh
 tapflow relay start
@@ -259,7 +259,7 @@ The `ssh` section lets tapflow connect to the VPS and manage the rathole server 
 
 When the tunnel is ready, the public URL is printed in the banner. If the tunnel fails to connect, the relay continues to run — only the tunnel is unavailable.
 
-See [Self-Hosting](/guide/self-hosting) for full setup instructions.
+Every `tunnel` key is listed under [Configuration](/reference/configuration#tunnel). See [Self-Hosting](/guide/self-hosting) for full setup instructions.
 
 
 ## `tapflow agent start`
@@ -274,8 +274,10 @@ tapflow agent start --relay ws://192.168.x.x:4000 --token tflw_pat_xxxxxxxx
 |--------|---------|-------------|
 | `--relay <url>` | `relay.url` in config, or `ws://localhost:4000` | Relay WebSocket URL. Omit if `relay.url` is set in `tapflow.config.json`. |
 | `--platform <ios\|android\|all>` | auto-detect | Platform to start |
-| `--device <name>` | all simulators | Limit which iOS simulators are exposed to the relay, by name or UDID |
+| `--device <name>` | all devices | Limit which devices are exposed to the relay: iOS simulators by name or UDID, Android emulators by AVD name or device ID |
 | `--token <pat>` | `TAPFLOW_AGENT_TOKEN` env | Token with the `agent` scope, required by remote relays. See [Agent Setup](/guide/agent#remote-relay-authentication). |
+
+`--relay` must start with `ws://` or `wss://`. A Mac runs one agent per platform: when an agent for the same platform is already running, it prints `AGENT ALREADY RUNNING` and exits. When no platform is available, it exits with code `1`.
 
 
 ## `tapflow devices`
@@ -333,7 +335,7 @@ tapflow status
 Example output:
 
 ```
-  ● mac-mini-office
+  ● mac-mini-office  (iOS)
       ◉  iPhone 16 Pro   ← qa@company.com
       ○  iPhone 15
 
@@ -343,7 +345,7 @@ Example output:
 
 ## `tapflow logs`
 
-Show recent relay log entries (last 100 lines by default).
+Show the recent log entries the relay keeps in memory (last 100 lines by default). Few events are recorded in this buffer. The relay's full log goes to the terminal it runs in.
 
 ```sh
 tapflow logs
@@ -353,6 +355,34 @@ tapflow logs
 |--------|---------|-------------|
 | `--relay <url>` | `relay.url` in config, or `http://localhost:4000` | Relay URL. Omit if `relay.url` is set in `tapflow.config.json`. |
 | `--lines <n>` | `100` | Number of log lines to show (max 500) |
+
+## `tapflow flow run`
+
+Replay saved flow files with no LLM involved. See the [Flow Reference](/guide/writing-flows) for how to write them.
+
+```sh
+tapflow flow run .tapflow/flows/login-smoke.yaml
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--relay <url>` | `ws://localhost:4000` | Relay WebSocket URL. Does not read `relay.url`. |
+| `--token <token>` | `TAPFLOW_TOKEN` env | PAT for a remote relay |
+| `--session <id>` | — | Target session ID |
+| `--device <name>` | — | Target device by name. Boots it when it is shut down. |
+| `--build <id>` | — | Build under test. Installed before the run and launched by the `launchApp` step. |
+| `--no-install` | — | Run without installing `--build` |
+| `--junit <path>` | — | Where to write a JUnit XML report |
+| `--artifacts <dir>` | `.tapflow/artifacts` | Directory for failure screenshots |
+| `--timeout <seconds>` | `10` | Default wait per selector (seconds) |
+
+With neither `--session` nor `--device`, it uses the booted device when exactly one is booted. With none booted, or more than one, it stops with an environment error.
+
+| Exit code | Meaning |
+|-----------|---------|
+| `0` | Every flow passed |
+| `1` | At least one flow failed on a product problem |
+| `2` | Environment or config error, or every failed flow failed on an environment problem |
 
 ## `tapflow migrate`
 

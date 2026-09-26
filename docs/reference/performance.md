@@ -28,7 +28,7 @@ The H.264 stream barely uses any bandwidth. A still screen is negligible, and it
 | Still | ~1.8 KB | ~14 KB/s | ~140× less |
 | Scroll | ~90–110 KB | ~2.6 MB/s | ~5× less |
 
-The scroll peak of ~2.6 MB/s is about 21 Mbps. Given that IEEE 802.11ac (Wi-Fi 5) specifies a single-link throughput of **≥500 Mbps**<sup><a href="#ref-80211ac">2</a></sup> and gigabit Ethernet is 1 Gbps, this uses only a single-digit percentage of one home Wi-Fi link. **Bandwidth is not a bottleneck.**
+The scroll peak of ~2.6 MB/s is about 21 Mbps. Given that IEEE 802.11ac (Wi-Fi 5) specifies a single-link throughput of **≥500 Mbps**<sup><a href="#ref-80211ac">2</a></sup> and gigabit Ethernet is 1 Gbps, this uses only a single-digit percentage of one home Wi-Fi link. **Bandwidth is not a bottleneck.** These figures were measured before the iOS H.264 encoder got its default 8 Mbps bitrate cap (`TAPFLOW_IOS_H264_BITRATE`).
 
 ## Decode latency
 
@@ -63,7 +63,7 @@ The exact value varies by environment. The most honest approach is to **run `pin
 - Scroll **p95 climbs to ~50 ms**. In moments of heavy motion, more so than on a still screen, the budget can get tight. Measurements show this tail comes from load and transport, not the decoder.
 - There is no real-LAN measurement of the HTTPS (WebCodecs) path yet — only a localhost proxy (3.9 ms still / 3.4 ms scroll `glass-to-glass`).
 - About 5% of older browsers (no WebGL2) fall back to JPEG. Bandwidth rises, but it works.
-- Resolution downscaling trades some fidelity for lower bandwidth and decode load (optional; native by default).
+- Resolution downscaling trades some fidelity for lower bandwidth and decode load. The default depends on the connection: native on localhost and LAN HTTPS, 1280px on the longest side for LAN HTTP, 1000px for an external connection ([`TAPFLOW_MAX_SIZE`](/reference/configuration#streaming-tuning-agent)).
 - Android emulators are bound by a software H.264 encoder, which limits frame production. A host-encode path mitigates this, and real devices use a hardware encoder.
 
 ## Reproduce it {#reproduce}
@@ -74,7 +74,7 @@ Performance instrumentation is on only in the dev build (Vite `:3001`); you forc
 pnpm --filter @tapflowio/dashboard dev
 ```
 
-In the browser, append `?perf=1` and `?decoder=` (`wasm` / `webcodecs` / `mse` / `jpeg`) to compare tiers. For a cross-machine LAN measurement, open the viewer on another Mac on the same LAN.
+In the browser, append `?perf=1` to open the panel. Adding `?decoder=wasm` forces the WASM decoder even in a secure context such as localhost; without it the automatic pick is used: WebCodecs when the page is a secure context with WebCodecs and WebGL2, otherwise WASM when WebGL2 is available. Other values are ignored. To compare the JPEG path, set `TAPFLOW_IOS_CODEC=jpeg` on the agent. For a cross-machine LAN measurement, open the viewer on another Mac on the same LAN.
 
 The full pipeline analysis, decoder selection process, and the accumulated measurement log and decision record remain in the engineering log as-is — [streaming-latency-log.md](https://github.com/jo-duchan/tapflow/blob/main/contributing/streaming-latency-log.md).
 

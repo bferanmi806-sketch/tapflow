@@ -13,7 +13,7 @@ Paths inside the file are relative to the file itself, the way a `tsconfig.json`
     "dataDir": "data"
   },
   "relay": {
-    "url": "https://your-relay-url"
+    "url": "wss://your-relay-url"
   },
   "smtp": {
     "host": "smtp.example.com",
@@ -31,13 +31,14 @@ Paths inside the file are relative to the file itself, the way a `tsconfig.json`
 | Key | Description |
 |-----|-------------|
 | `local` | Settings for the relay server running on this machine. |
-| `relay.url` | URL of the relay to connect to. Used by `tapflow agent start`, `tapflow admin init`, `tapflow status`, and `tapflow logs` as the default — no `--relay` flag needed when this is set. Leave empty for local mode (`ws://localhost:[local.port]`). |
+| `relay.url` | URL of the relay to connect to. Used by `tapflow agent start`, `tapflow admin init`, `tapflow status`, and `tapflow logs` as the default — no `--relay` flag needed when this is set. Leave empty for local mode (`ws://localhost:[local.port]`). Write it as `ws://` or `wss://`: `tapflow agent start` rejects any other scheme, and the other commands switch it to HTTP where they need to. |
+| `tunnel` | The tunnel that `tapflow start` and `tapflow relay start` bring up alongside the relay. See the Tunnel section below. |
 | `tls` | LAN HTTPS (secure context) settings, required for WebCodecs hardware decode. See the HTTPS section below. |
 | `smtp` | SMTP settings for sending invitation and password reset emails. |
 | `webhooks` | Outbound endpoints notified when a build's review status changes. Signing secrets are read from env vars named by `secretEnv`. See the Webhooks section below. |
 | `agent.lean` | Lean mode for the iOS simulators and Android emulators this machine's agent boots. Read by the agent, not the relay. Default `false`. See the Lean mode section below. |
 
-`smtp.from` defaults to `tapflow <smtp.user>` when `smtp.user` is set. Override it explicitly if you need a different sender address.
+`smtp.from` defaults to `tapflow <smtp.user>` when `smtp.user` is set, and to `tapflow <noreply@tapflow.local>` otherwise. Override it explicitly if you need a different sender address.
 
 ## Environment variable overrides
 
@@ -49,20 +50,28 @@ Secrets can also live in the data directory's `.env` file. The relay loads it fi
 |----------|------------|---------|-------------|
 | `TAPFLOW_PORT` | `local.port` | `4000` | Server port |
 | `TAPFLOW_TUNNEL_PORT` | `local.tunnelPort` | `4001` when a tunnel is configured, otherwise off | Loopback-only port for tunnel clients such as rathole, `tailscale serve` and `cloudflared`. A connection on this port counts as remote even though it comes from the relay's own machine, so it signs in or presents a token. `tapflow start` and `tapflow relay start` open it whenever a `tunnel` is configured. Everywhere else, including the Docker image, it opens only when this variable or `local.tunnelPort` names a port — set it there for any tunnel or proxy that reaches the relay from the relay's own network namespace. If the relay itself uses `4001`, the default moves to `4002`. Inside a container, only something that shares the relay's network namespace can reach it. |
-| `JWT_SECRET` | — | *(auto-generated)* | JWT signing key (env only). If unset, a strong per-install secret is generated on first boot and persisted to the data directory. |
+| `JWT_SECRET` | — | *(auto-generated)* | JWT signing key (env only). If unset, a strong per-install secret is generated on first boot and persisted to the data directory. A value you set must be at least 32 characters; a shorter one stops the relay from starting. |
 | `TAPFLOW_HOME` | — | `~/.tapflow` | The install directory: where `tapflow.config.json` and, by default, the data directory live. Every command reads it. A relative value is taken from the current directory; an empty one counts as unset. A command that runs or reaches the relay stops when it names a directory that does not exist — `tapflow init` creates it instead. |
 | `TAPFLOW_DATA_DIR` | `local.dataDir` | `<install>/data` | DB and uploads directory. Relative to the current directory here, and to the config file in `local.dataDir`. An install that already holds `.tapflow/data` or `.tapflow-data` keeps using it. |
 | `TAPFLOW_RELAY_URL` | `relay.url` | *(empty)* | Relay URL used as default by CLI commands |
 | `TAPFLOW_AGENT_TOKEN` | — | *(empty)* | Token with the `agent` scope for remote relay authentication. The `--token` flag takes precedence. See [Agent Setup](/guide/agent#remote-relay-authentication). |
+| `TAPFLOW_TOKEN` | — | *(empty)* | PAT that `tapflow flow run` and the MCP server use to reach a remote relay. For `flow run`, the `--token` flag takes precedence. |
+| `TAPFLOW_TUNNEL_TOKEN` | — | *(empty)* | Shared secret that authenticates the rathole tunnel. Required when `tunnel.provider` is `rathole`. |
 | `TAPFLOW_LEAN` | `agent.lean` | `off` | `on` or `off`. Any other value is ignored with a warning, and the config file's value is used. |
 | `TAPFLOW_TRUSTED_PROXIES` | — | *(empty)* | Comma-separated IPs of trusted reverse proxies (e.g. `127.0.0.1,::1`). Set this when the relay runs behind a same-host reverse proxy so it reads the real client IP from `X-Forwarded-For` instead of the proxy's address. Empty disables forwarded-header parsing. |
 | `TAPFLOW_BUILD_TTL_DAYS` | — | `7` | Days a build is kept after its deletion is scheduled before the files and record are purged. Scheduling is a manual action — marking a build **Done** no longer deletes it. Set to a small value (e.g. `0.001`) to verify cleanup quickly in local testing. |
+| `TAPFLOW_MAX_BUILD_BYTES` | — | `524288000` (500 MB) | Maximum build upload size (bytes). |
+| `TAPFLOW_MAX_UNPACKED_BYTES` | — | 4× the upload limit | Maximum unpacked size of an iOS `.tar.gz` build (bytes). |
+| `TAPFLOW_MAX_COMMENT_BYTES` | — | `5242880` (5 MB) | Maximum size of a comment's image attachment (bytes). |
+| `IDLE_TIMEOUT_MS` | — | `300000` (5 min) | Milliseconds a session waits after its browser leaves before it ends. |
+| `TAPFLOW_RESOURCE_THRESHOLD_PERCENT` | — | `80` | When CPU or memory use on the agent's Mac is above this percentage, new session joins are refused. |
 | `TAPFLOW_WS_BACKPRESSURE_BYTES` | — | `1048576` (1 MB) | Binary frame drop threshold per browser socket. Frames are silently dropped when the socket buffer exceeds this value. |
 | `TAPFLOW_AGENT_GRACE_MS` | — | `15000` (15 s) | Milliseconds a session stays alive after its agent's connection drops, waiting for that agent to come back. An agent registers about a second after its process starts, so the default covers a restart several times over; the open tab says it is waiting rather than showing a frame that has stopped updating, and the device is not offered to anyone else until the window closes. `0` disables the hold — the session ends the moment the agent's socket does, as it did before this existed. A blank, non-numeric or negative value falls back to the default and logs a warning at startup. |
 | `TAPFLOW_CLOUDFLARE_TOKEN` | — | *(empty)* | Cloudflare API token for DNS-01 issuance when `tls.dnsProvider` is `cloudflare`. |
 | `TAPFLOW_VERCEL_TOKEN` | — | *(empty)* | Vercel API token for DNS-01 issuance when `tls.dnsProvider` is `vercel`. |
 | `TAPFLOW_VERCEL_TEAM_ID` | — | *(empty)* | Vercel team ID, required when the domain belongs to a team scope. |
 | `TAPFLOW_ACME_EMAIL` | — | *(empty)* | Optional contact email for the Let's Encrypt account. |
+| `TAPFLOW_ACME_STAGING` | — | *(empty)* | `1` issues from the Let's Encrypt staging environment. For testing; browsers do not trust the certificate it produces. |
 | `TAPFLOW_ADMIN_EMAIL` | — | *(empty)* | Email for the first Admin account, created while the relay boots. Set it **together with** `TAPFLOW_ADMIN_PASSWORD`. Does nothing on an install that already has an owner. |
 | `TAPFLOW_ADMIN_PASSWORD` | — | *(empty)* | Password for that account, at least 8 characters. |
 | `SMTP_HOST` | `smtp.host` | `` | SMTP host |
@@ -70,7 +79,8 @@ Secrets can also live in the data directory's `.env` file. The relay loads it fi
 | `SMTP_SECURE` | `smtp.secure` | `false` | Enable TLS (set to string `"true"`) |
 | `SMTP_USER` | `smtp.user` | `` | SMTP username |
 | `SMTP_PASS` | `smtp.pass` | `` | SMTP password |
-| `SMTP_FROM` | `smtp.from` | `tapflow <smtp.user>` | Sender address |
+| `SMTP_FROM` | `smtp.from` | `tapflow <smtp.user>` (`tapflow <noreply@tapflow.local>` without `smtp.user`) | Sender address |
+| `LOG_LEVEL` | — | `info` | Log level: `debug`, `info`, `warn` or `error`. Read by both the relay and the agents. |
 
 ::: tip JWT_SECRET is optional
 If `JWT_SECRET` is not set, the relay generates a strong per-install secret on first boot and stores it in the data directory (`jwt-secret`, owner-only). Set `JWT_SECRET` explicitly only when you need a fixed key — for example, to share one secret across multiple relay instances:
@@ -79,7 +89,7 @@ If `JWT_SECRET` is not set, the relay generates a strong per-install secret on f
 openssl rand -hex 32
 ```
 
-Put the value in `.tapflow/data/.env` or inject it as a shell environment variable.
+Put the value in the data directory's `.env` (`~/.tapflow/data/.env` by default) or inject it as a shell environment variable. A value shorter than 32 characters is rejected.
 :::
 
 ::: warning Point same-host proxies and tunnels at the tunnel port
@@ -153,10 +163,15 @@ These variables are set on the **agent** process (`tapflow agent start` / `tapfl
 | `TAPFLOW_IOS_CODEC` | `h264` | iOS stream codec — `h264` (default) or `jpeg`. H.264 also needs browser support; unsupported browsers fall back to JPEG automatically. |
 | `TAPFLOW_IOS_H264_BITRATE` | `8000000` | iOS H.264 target bitrate (bits/s, soft cap). Lower = fewer LAN drops, more motion blockiness. |
 | `TAPFLOW_JPEG_QUALITY` | `0.8` | iOS JPEG quality (0–1), JPEG path only. Lower = fewer drops, more artifacts. |
-| `TAPFLOW_MAX_SIZE` | *(native)* | Downscale cap for the longest side (px), both platforms. Lower = less bandwidth and viewer decode load, lower fidelity. |
-| `TAPFLOW_IOS_MAX_SIZE` / `TAPFLOW_ANDROID_MAX_SIZE` | *(native)* | Per-platform override of `TAPFLOW_MAX_SIZE`. |
+| `TAPFLOW_MAX_SIZE` | *(per connection)* | Downscale cap for the longest side (px), both platforms. Lower = less bandwidth and viewer decode load, lower fidelity. When unset, the viewer's connection decides: native on localhost and LAN HTTPS, `TAPFLOW_MAX_SIZE_LAN` on LAN HTTP, `TAPFLOW_MAX_SIZE_EXTERNAL` on an external connection. `0` means native on every connection. |
+| `TAPFLOW_MAX_SIZE_LAN` | `1280` | Cap (px) for LAN HTTP connections when `TAPFLOW_MAX_SIZE` is unset. |
+| `TAPFLOW_MAX_SIZE_EXTERNAL` | `1000` | Cap (px) for external connections when `TAPFLOW_MAX_SIZE` is unset. |
+| `TAPFLOW_IOS_MAX_SIZE` / `TAPFLOW_ANDROID_MAX_SIZE` | *(per connection)* | Per-platform override of `TAPFLOW_MAX_SIZE`. |
 | `TAPFLOW_ANDROID_FPS` | `30` | Android emulator capture frame rate (gRPC path). |
 | `TAPFLOW_ANDROID_BACKEND` | *(auto)* | Force the Android backend — `grpc` or `scrcpy`. Auto-selected by device type when unset. |
+| `TAPFLOW_ANDROID_GRPC_PORT` | `8554` | First port tried when picking a gRPC port for an emulator tapflow boots. The first free port from here, stepping by 2, is used. |
+| `TAPFLOW_AUDIO` | *(on)* | `off` turns off device audio streaming. See [Audio](/guide/audio). |
+| `TAPFLOW_ALLOW_DISPLAY_SLEEP` | *(empty)* | Any value lets the host display sleep during a session. System sleep is still prevented. See [Agent Setup](/guide/agent#host-display-and-sleep). |
 
 ## Lean mode (agent)
 
@@ -194,6 +209,20 @@ The emulator gives memory back to the Mac only when it exits, so the apps have t
 
 In a setup with several Macs, each Mac's `tapflow.config.json` decides for the agent on that Mac.
 
+## Tunnel
+
+With `tunnel` set, `tapflow start` and `tapflow relay start` bring up a tunnel alongside the relay. The supported `provider` values are `tailscale` and `rathole`. Example configs are under [`tapflow relay start`](/reference/cli#tapflow-relay-start), and the full setup is in [Self-Hosting](/guide/self-hosting).
+
+| Key | Description |
+|-----|-------------|
+| `tunnel.provider` | `tailscale` or `rathole` (required) |
+| `tunnel.publicUrl` | Public URL your team opens. Required for rathole. For Tailscale, the MagicDNS hostname is used when it is omitted. |
+| `tunnel.serverAddr` | rathole server address (`host:port`). rathole only, required. |
+| `tunnel.ssh.host` / `tunnel.ssh.user` | Host and user for managing the rathole server over SSH. Without `ssh`, tapflow assumes the server is already running. |
+| `tunnel.ssh.keyPath` | Path to the SSH private key (optional). |
+
+rathole also needs the `TAPFLOW_TUNNEL_TOKEN` environment variable.
+
 ## HTTPS (secure context)
 
 Hardware-accelerated video decode (WebCodecs) only runs in a secure context (HTTPS). Over HTTP the dashboard falls back to software decode, so to give teammates on the LAN a smoother stream, terminate the relay over HTTPS. With `tls` set, the relay terminates HTTPS and WSS on the same port.
@@ -223,7 +252,7 @@ With your own domain and a DNS provider API token, the relay auto-issues and ren
 | `tls.publishAddress` | Auto-publish the domain's A record to this machine's LAN IP. Default `true`; set `false` to manage DNS yourself. |
 | `tls.address` | IP to use instead of the auto-detected LAN IP, for multi-NIC or VPN overrides. |
 
-API tokens go in the `.tapflow/data/.env` file that `tapflow init` scaffolds, not in the config file. Cloudflare uses `TAPFLOW_CLOUDFLARE_TOKEN` and Vercel uses `TAPFLOW_VERCEL_TOKEN`, plus `TAPFLOW_VERCEL_TEAM_ID` for a team domain. The file stays out of git because `.tapflow/data/` is gitignored. A value set directly in the environment takes precedence over the file. See [Configuring tapflow](/guide/configure) for how the file is scaffolded and read.
+API tokens go in the `.env` file that `tapflow init` scaffolds in the data directory (`~/.tapflow/data/.env` by default), not in the config file. Cloudflare uses `TAPFLOW_CLOUDFLARE_TOKEN` and Vercel uses `TAPFLOW_VERCEL_TOKEN`, plus `TAPFLOW_VERCEL_TEAM_ID` for a team domain. When the install directory is inside a git repository, `tapflow init` adds the data directory to `.gitignore` so the file is not committed. If you point the data directory somewhere else, make sure that path is ignored too. A value set directly in the environment takes precedence over the file. See [Configuring tapflow](/guide/configure) for how the file is scaffolded and read.
 
 When `publishAddress` is on, the relay publishes its LAN IP to the domain's A record on boot and refreshes it periodically, so teammates just open the domain without touching DNS.
 
@@ -257,7 +286,7 @@ At startup, tapflow advertises the first concrete DNS SAN other than `localhost`
 
 ## Data directory
 
-The relay creates these files in the install directory on first run:
+The install directory is laid out as follows. `tapflow init` writes `tapflow.config.json`, `AGENTS.md` and `CLAUDE.md`, plus `data/.env` when you choose HTTPS with a DNS API token; the relay creates the rest of `data/` as it runs.
 
 ```text
 ~/.tapflow/
@@ -269,9 +298,11 @@ The relay creates these files in the install directory on first run:
     jwt-secret          ← per-install signing key
     .env                ← credentials, when DNS auto-issue is used
     uploads/
-      builds/           ← .app.zip and .apk files
+      builds/           ← .app.zip, .tar.gz and .apk files
       avatars/
       comments/
+      team/             ← team logo
+    recordings/         ← session recordings (deleted after 72h)
 ```
 
 Flow files are not part of the install: keep them in your app repository under `.tapflow/flows/`, where failure screenshots land in `.tapflow/artifacts/`.

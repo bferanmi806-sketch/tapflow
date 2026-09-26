@@ -28,7 +28,7 @@ H.264 스트림은 대역폭을 거의 쓰지 않습니다. 정지 화면은 거
 | 정지 | ~1.8 KB | ~14 KB/s | ~140× 절감 |
 | 스크롤 | ~90–110 KB | ~2.6 MB/s | ~5× 절감 |
 
-스크롤 피크 ~2.6 MB/s는 약 21 Mbps입니다. IEEE 802.11ac(Wi-Fi 5)의 단일 링크 처리량 규격이 **≥500 Mbps**<sup><a href="#ref-80211ac">2</a></sup>이고 기가비트 이더넷이 1 Gbps인 것을 감안하면, 가정용 Wi-Fi 한 대의 대역폭 중 한 자릿수 %만 사용합니다. **대역폭은 병목이 아닙니다.**
+스크롤 피크 ~2.6 MB/s는 약 21 Mbps입니다. IEEE 802.11ac(Wi-Fi 5)의 단일 링크 처리량 규격이 **≥500 Mbps**<sup><a href="#ref-80211ac">2</a></sup>이고 기가비트 이더넷이 1 Gbps인 것을 감안하면, 가정용 Wi-Fi 한 대의 대역폭 중 한 자릿수 %만 사용합니다. **대역폭은 병목이 아닙니다.** 이 수치는 iOS H.264 인코더에 기본 8 Mbps 비트레이트 상한(`TAPFLOW_IOS_H264_BITRATE`)이 생기기 전에 잰 값입니다.
 
 ## 디코드 지연
 
@@ -63,7 +63,7 @@ LAN 실측입니다. 에이전트(빌드 머신)와 뷰어를 **서로 다른 Ma
 - 스크롤 **p95가 ~50 ms**까지 오릅니다. 정지 화면보다 움직임이 큰 순간에는 예산이 빠듯해질 수 있습니다. 측정상 이 꼬리는 디코더가 아니라 부하·전송에서 옵니다.
 - HTTPS(WebCodecs) 경로의 LAN 실측은 아직 없습니다. localhost 대용치(정지 3.9 ms / 스크롤 3.4 ms `glass-to-glass`)만 있습니다.
 - 약 5%의 구형 브라우저(WebGL2 미지원)는 JPEG로 폴백합니다. 대역폭은 늘지만 동작합니다.
-- 해상도 다운스케일은 화질을 일부 조정해 대역폭과 디코드 부하를 줄입니다(선택적, 기본은 네이티브).
+- 해상도 다운스케일은 화질을 일부 조정해 대역폭과 디코드 부하를 줄입니다. 기본값은 연결 방식에 따라 다릅니다. localhost와 LAN HTTPS는 원본, LAN HTTP는 긴 변 1280px, 외부 연결은 1000px입니다([`TAPFLOW_MAX_SIZE`](/ko/reference/configuration#스트리밍-튜닝-에이전트)).
 - Android 에뮬레이터는 소프트웨어 H.264 인코더에 묶여 프레임 생산이 제한됩니다. 호스트 인코드 경로로 완화하며, 실제 단말은 하드웨어 인코더를 씁니다.
 
 ## 직접 재현하기 {#reproduce}
@@ -74,7 +74,7 @@ LAN 실측입니다. 에이전트(빌드 머신)와 뷰어를 **서로 다른 Ma
 pnpm --filter @tapflowio/dashboard dev
 ```
 
-브라우저에서 `?perf=1`과 `?decoder=`(`wasm` / `webcodecs` / `mse` / `jpeg`)를 붙여 티어별로 비교합니다. 크로스 머신 LAN 측정은 같은 LAN의 다른 Mac에서 뷰어를 띄워 진행합니다.
+브라우저에서 `?perf=1`을 붙이면 패널이 열립니다. `?decoder=wasm`을 함께 붙이면 localhost처럼 보안 컨텍스트인 환경에서도 WASM 디코더를 씁니다. 붙이지 않으면 자동으로 고릅니다. 보안 컨텍스트이고 WebCodecs와 WebGL2를 쓸 수 있으면 WebCodecs를, 그렇지 않고 WebGL2가 있으면 WASM을 씁니다. 다른 값은 무시됩니다. JPEG 경로는 에이전트에 `TAPFLOW_IOS_CODEC=jpeg`를 설정해 비교합니다. 크로스 머신 LAN 측정은 같은 LAN의 다른 Mac에서 뷰어를 띄워 진행합니다.
 
 전체 파이프라인 분석, 디코더 선정 과정, 누적된 측정 로그와 결정 기록은 엔지니어링 로그에 그대로 남아 있습니다 — [streaming-latency-log.md](https://github.com/jo-duchan/tapflow/blob/main/contributing/streaming-latency-log.md).
 
