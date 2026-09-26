@@ -15,7 +15,10 @@
 // **What this does NOT catch.** It is a spelling floor, not a style review (see
 // `contributing/test-and-guard-coverage.md` rule 3). It does not judge whether a bare 에이전트
 // means tapflow's agent or a coding agent, it does not check that PAT is spelled out on first use,
-// and it skips frontmatter, so the hero text in `docs/ko/index.md` is outside it. English pages are
+// and it skips frontmatter, so the hero text in `docs/ko/index.md` is outside it. A hyphen-joined word
+// (`relay-agent`) is not caught, since hyphens also build identifiers like `tapflow-agent`. A list
+// continuation paragraph indented four spaces or more is skipped with the indented-code rule in
+// `proseLines` (none exist in docs/ko today). English pages are
 // not scanned: the English column has no forbidden spelling a regex can decide.
 //
 // Mutations run by hand before commit, per rule 1 — each claim above was made to fail:
@@ -27,6 +30,8 @@
 //  - `{#...}` stripping removed: red on the kept anchors.
 //  - each allowlist entry deleted in turn: red on the line it covers.
 //  - the page walk pointed at an empty directory: the floor goes red.
+//  - `/` put back into the relay lookarounds: red on the `relay/agent` fixture line.
+//  - the allowlist's file scope removed: red on the out-of-scope `**Agent**` case.
 import { describe, it, expect } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -41,9 +46,10 @@ const FORBIDDEN = [
   { re: /디바이스/g, use: '기기' },
   { re: /디렉토리/g, use: '디렉터리' },
   { re: /QA\s?팀/g, use: '팀원 / 팀 전체' },
-  // A Latin word on its own. `tapflow-agent`, `agent.lean` and `/ko/guide/agent` are not words here.
-  { re: /(?<![A-Za-z0-9_.\/-])relays?(?![A-Za-z0-9_\/-])/gi, use: '릴레이' },
-  { re: /(?<![A-Za-z0-9_.\/-])agents?(?![A-Za-z0-9_\/-])/gi, use: '에이전트' },
+  // A Latin word on its own. `tapflow-agent` and `agent.lean` are not words here. `/` is not a
+  // boundary: link targets are already stripped, so `relay/agent` in prose is two words.
+  { re: /(?<![A-Za-z0-9_.-])relays?(?![A-Za-z0-9_-])/gi, use: '릴레이' },
+  { re: /(?<![A-Za-z0-9_.-])agents?(?![A-Za-z0-9_-])/gi, use: '에이전트' },
 ]
 
 /**
@@ -52,11 +58,11 @@ const FORBIDDEN = [
  * does not exist.
  */
 const ALLOW = [
-  { text: '**Agent**', reason: 'token Type label in Settings → Tokens, shown as-is in the dashboard' },
-  { text: '**AGENT ALREADY RUNNING**', reason: 'literal CLI output the reader will see' },
-  { text: '에이전트 (Agents)', reason: 'API reference heading glossing the English resource group' },
-  { text: '릴레이 (Relay)', reason: 'API reference heading glossing the English resource group' },
-  { text: '디바이스 팜', reason: 'industry term (device farm); "기기 팜" is not a phrase anyone searches for' },
+  { text: '**Agent**', files: ['guide/agent.md', 'guide/troubleshooting.md', 'dashboard/overview.md'], reason: 'token Type label in Settings → Tokens, shown as-is in the dashboard' },
+  { text: '**AGENT ALREADY RUNNING**', files: ['guide/troubleshooting.md'], reason: 'literal CLI output the reader will see' },
+  { text: '에이전트 (Agents)', files: ['reference/api.md'], reason: 'API reference heading glossing the English resource group' },
+  { text: '릴레이 (Relay)', files: ['reference/api.md'], reason: 'API reference heading glossing the English resource group' },
+  { text: '디바이스 팜', files: ['reference/sustainability.md'], reason: 'industry term (device farm); "기기 팜" is not a phrase anyone searches for' },
 ]
 
 const stripLine = (line) => line
@@ -69,7 +75,7 @@ const stripLine = (line) => line
   .replace(/\{#[^}]*\}/g, ' ')
 
 /** Every forbidden spelling in a markdown body's prose, and the allowlist entries it used. */
-export function findViolations(body) {
+export function findViolations(body, file = '') {
   const found = []
   const used = new Set()
   const lines = body.split(/\r?\n/)
@@ -79,7 +85,7 @@ export function findViolations(body) {
     const lineNo = cursor
     let text = stripLine(raw)
     for (const a of ALLOW) {
-      if (text.includes(a.text)) {
+      if (a.files.includes(file) && text.includes(a.text)) {
         used.add(a.text)
         text = text.split(a.text).join(' ')
       }
@@ -106,7 +112,7 @@ function scan(dir) {
   const used = new Set()
   const files = pages(dir)
   for (const f of files) {
-    const r = findViolations(readFileSync(f, 'utf8'))
+    const r = findViolations(readFileSync(f, 'utf8'), relative(dir, f))
     for (const v of r.found) violations.push(`${relative(root, f)}:${v.line}: "${v.word}" → ${v.use}`)
     r.used.forEach((u) => used.add(u))
   }
@@ -129,11 +135,18 @@ describe('docs glossary (docs/AGENTS.md 용어집)', () => {
       '```',
       '',
       '디바이스를 고르고 relay가 agent를 부릅니다. 디렉토리와 QA팀.',
+      'relay/agent 구간',
     ].join('\n')
-    const { found } = findViolations(body)
+    const { found } = findViolations(body, 'guide/agent.md')
     expect(found.map((v) => [v.line, v.word])).toEqual([
       [13, '디바이스'], [13, '디렉토리'], [13, 'QA팀'], [13, 'relay'], [13, 'agent'],
+      [14, 'relay'], [14, 'agent'],
     ])
+  })
+
+  it('an allowlist entry only covers the files it names', () => {
+    expect(findViolations('**Agent** 토큰', 'guide/agent.md').found).toEqual([])
+    expect(findViolations('**Agent** 토큰', 'guide/scaling.md').found.map((v) => v.word)).toEqual(['Agent'])
   })
 
   it('catches a forbidden word planted in a page tree', () => {
