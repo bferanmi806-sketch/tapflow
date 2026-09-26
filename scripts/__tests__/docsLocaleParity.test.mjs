@@ -2,11 +2,8 @@
 //
 // `docs/AGENTS.md` says every page is written in both languages with the same structure, and that
 // Korean is the source. Nothing checked it. On 2026-09-26 every pair's heading sequence matched, which
-// held by care rather than by anything that would notice it stop — and one pair did not match: the
-// Korean webhooks page gave its `{#id}` a Hangul value (`config-json으로-선언-권장`) where the English
-// had `declare-in-config-json-recommended`. Nothing linked either, so it was renamed to the English
-// value when this check went in. Three things are compared per pair, and each catches a different
-// drift:
+// held by care rather than by anything that would notice it stop. Three things are compared per pair,
+// and each catches a different drift:
 //
 //  - **both files exist** — a page added in one locale only.
 //  - **the heading levels, in order** — a section added, dropped or promoted on one side. Compared as
@@ -15,6 +12,10 @@
 //  - **the explicit `{#id}` set** — the ids links and shipped code are allowed to depend on. A Korean
 //    auto-slug is the heading's text, so `{#id}` is the only anchor stable across a translation edit;
 //    one present in a single locale means a link that works in one language and not the other.
+//    **Only ASCII ids are compared.** A Hangul `{#id}` is a Korean page keeping the auto-slug an old
+//    heading had (`{#데이터-디렉토리}` after the text became 디렉터리), so an existing Korean link keeps
+//    working. It has no English counterpart by construction, and requiring one would force the rename
+//    that id exists to avoid.
 //
 // **No H4.** VitePress's outline stops at H3 by default, so an H4 is a heading no reader can navigate
 // to from the page's own table of contents, and one is usually a sign the page wants splitting.
@@ -105,8 +106,9 @@ function parityProblems(pages) {
       const at = a.findIndex((h, k) => b[k]?.level !== h.level)
       problems.push(`${en}: heading levels differ from ${twin(en)} at heading ${at === -1 ? a.length + 1 : at + 1} (en: ${seqA} | ko: ${seqB})`)
     }
-    const idsA = a.map((h) => h.id).filter(Boolean).sort()
-    const idsB = b.map((h) => h.id).filter(Boolean).sort()
+    const ascii = (id) => id && /^[\x21-\x7e]+$/.test(id)
+    const idsA = a.map((h) => h.id).filter(ascii).sort()
+    const idsB = b.map((h) => h.id).filter(ascii).sort()
     const onlyA = idsA.filter((x) => !idsB.includes(x))
     const onlyB = idsB.filter((x) => !idsA.includes(x))
     if (onlyA.length || onlyB.length) {
@@ -151,8 +153,8 @@ describe('EN and KO docs have the same structure', () => {
       ['ko/guide/a.md', `# 가\n\n## 하나 {#one}\n\n## 둘 {#two-ko}\n\n### 하위\n\n${fence}`],
       ['guide/b.md', '# B\n'],
       ['ko/guide/c.md', '# 다\n'],
-      ['guide/same.md', `# S\n\n## X {#x}\n\n${fence}`],
-      ['ko/guide/same.md', '# 에스\n\n## 엑스 {#x}\n'],
+      ['guide/same.md', `# S\n\n## X {#x}\n\n## Old title\n\n${fence}`],
+      ['ko/guide/same.md', '# 에스\n\n## 엑스 {#x}\n\n## 옛 제목 {#옛-제목}\n'],
     ])
     expect(parityProblems(pages)).toEqual([
       'guide/b.md: no ko/guide/b.md',
