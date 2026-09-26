@@ -35,7 +35,7 @@
 import { describe, it, expect } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, relative } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { proseLines } from '../lib/prose-lines.mjs'
 
 const root = join(import.meta.dirname, '../..')
@@ -112,7 +112,8 @@ function scan(dir) {
   const used = new Set()
   const files = pages(dir)
   for (const f of files) {
-    const r = findViolations(readFileSync(f, 'utf8'), relative(dir, f))
+    // Posix separators: the allowlist names files with `/`, and `relative` gives `\` on Windows.
+    const r = findViolations(readFileSync(f, 'utf8'), relative(dir, f).split(sep).join('/'))
     for (const v of r.found) violations.push(`${relative(root, f)}:${v.line}: "${v.word}" → ${v.use}`)
     r.used.forEach((u) => used.add(u))
   }
