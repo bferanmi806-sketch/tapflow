@@ -107,33 +107,41 @@ export function handleCreateComment(
     }
 
     const db = getDb()
-    // Checked here rather than left to the FK: this listener is async, so the constraint error
-    // would surface as an unhandled rejection, and the CLI's handler exits the relay on one.
+    // Checked here rather than left to the FK, so an unknown build gets a 404 rather than the 500 below.
     if (!db.prepare('SELECT 1 FROM builds WHERE id = ?').get(fields.build_id)) {
       if (attachmentPath) unlinkSafe(attachmentPath, 'rejected attachment')
       return json(res, 404, { error: 'Build not found' })
     }
-    const commentResult = db.prepare(
-      "INSERT INTO comments (build_id, author_id, body, created_at) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))"
-    ).run(fields.build_id, auth.userId, fields.body.trim())
 
-    const commentId = commentResult.lastInsertRowid as number
+    // This listener is async, so anything thrown in it is an unhandled rejection, and the CLI exits the
+    // relay on one. It can throw: author_id is a FK too, and a member an Admin removed keeps a valid
+    // cookie until it expires. One transaction, so a failed attachment row leaves no comment behind.
+    try {
+      const commentId = db.transaction(() => {
+        const id = db.prepare(
+          "INSERT INTO comments (build_id, author_id, body, created_at) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))"
+        ).run(fields.build_id, auth.userId, fields.body.trim()).lastInsertRowid as number
+        if (attachmentPath) {
+          const size = fs.statSync(attachmentPath).size
+          db.prepare(
+            'INSERT INTO comment_attachments (comment_id, file_path, mime, size) VALUES (?, ?, ?, ?)'
+          ).run(id, attachmentPath, attachmentMime, size)
+        }
+        return id
+      })()
 
-    if (attachmentPath) {
-      const size = fs.statSync(attachmentPath).size
-      db.prepare(
-        'INSERT INTO comment_attachments (comment_id, file_path, mime, size) VALUES (?, ?, ?, ?)'
-      ).run(commentId, attachmentPath, attachmentMime, size)
+      const comment = db.prepare(`
+        SELECT c.id, c.body, c.created_at,
+               COALESCE(u.display_name, substr(u.email, 1, instr(u.email, '@') - 1)) as author
+        FROM comments c JOIN users u ON u.id = c.author_id
+        WHERE c.id = ?
+      `).get(commentId)
+
+      json(res, 201, comment)
+    } catch {
+      if (attachmentPath) unlinkSafe(attachmentPath, 'failed comment attachment')
+      if (!res.headersSent) json(res, 500, { error: 'Could not save the comment' })
     }
-
-    const comment = db.prepare(`
-      SELECT c.id, c.body, c.created_at,
-             COALESCE(u.display_name, substr(u.email, 1, instr(u.email, '@') - 1)) as author
-      FROM comments c JOIN users u ON u.id = c.author_id
-      WHERE c.id = ?
-    `).get(commentId)
-
-    json(res, 201, comment)
   })
 
   bb.on('error', () => json(res, 500, { error: 'Upload failed' }))

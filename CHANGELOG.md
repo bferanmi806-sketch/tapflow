@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`POST /api/v1/comments` accepts a PAT with the `builds:write` scope.** The CI step in the Build Distribution guide that posts branch and commit info as a comment got a 401, because the route accepted only the dashboard cookie, and failed the job under `curl -sf`. It now works with the same token that uploaded the build; a token without `builds:write` gets a 403.
 
-- **A comment on a build that does not exist no longer takes the relay down.** `POST /api/v1/comments` with an unknown `build_id` failed a foreign-key check where nothing caught it, and a relay started with the `tapflow` CLI exited. It now answers 404.
+- **A comment the database refuses no longer takes the relay down.** `POST /api/v1/comments` with an unknown `build_id`, or from a browser whose user an Admin had removed, failed a foreign-key check where nothing caught it, and a relay started with the `tapflow` CLI exited. An unknown build now answers 404, anything else 500.
 
 ## [0.24.0] - 2026-09-26
 
