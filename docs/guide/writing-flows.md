@@ -9,7 +9,7 @@ A flow is a UI test scenario written in YAML, replayed deterministically by `tap
 ::: info Two QA axes
 tapflow has two QA axes. The browser dashboard is the **manual QA axis**, where your team tests by hand; the flow runner covered here is the **automated QA axis**, whose main stage is CI/CD.
 
-Flows are not a language you hand-write from scratch — they are an artifact an agent generates or a recording produces. To author them with an agent, see [MCP in CI/CD](/guide/mcp-ci).
+Flows are not a language you hand-write from scratch — they are an artifact a coding agent generates or a recording produces. To author them with an agent, see [MCP in CI/CD](/guide/mcp-ci).
 :::
 
 ## Flow file structure
@@ -118,7 +118,7 @@ tapflow flow run .tapflow/flows/login.yaml .tapflow/flows/checkout.yaml
 | Option | Description |
 |--------|-------------|
 | `--relay <url>` | Relay URL (default `ws://localhost:4000`) |
-| `--token <token>` | PAT for a remote relay (or the `TAPFLOW_TOKEN` env var) |
+| `--token <token>` | Personal access token (PAT) for a remote relay (or the `TAPFLOW_TOKEN` env var) |
 | `--device <name>` | Target device by name. Boots it when shut down. |
 | `--session <id>` | Session id of the target device. Use it when several devices share a name and `--device` cannot pick one. |
 | `--build <id>` | Build under test. Installed before the run; the `launchApp` step launches it. |
@@ -202,6 +202,6 @@ The exit-code contract makes the job fail when a step fails (`1` or `2`). `if: a
 
 ## Relationship to run_flow
 
-The same flow engine runs through the MCP `run_flow` tool. An agent authors a scenario once while exploring the app, then replays that flow deterministically afterward. Exploratory work goes through the individual MCP tools; verified scenarios replay through `run_flow` — a hybrid of the two.
+The same flow engine runs through the MCP `run_flow` tool. A coding agent authors a scenario once while exploring the app, then replays that flow deterministically afterward. Exploratory work goes through the individual MCP tools; verified scenarios replay through `run_flow` — a hybrid of the two.
 
 Authoring by an agent and replaying with a deterministic runner is covered in more depth in [MCP in CI/CD](/guide/mcp-ci).

@@ -162,7 +162,7 @@ Every key in `tapflow.config.json` and its environment-variable overrides are de
 
 ## Asking a coding agent about tapflow
 
-`init` writes an `AGENTS.md` into the install directory with a tapflow section between `<!-- tapflow:begin -->` and `<!-- tapflow:end -->`. It tells an agent to answer from [the documentation index](https://www.tapflow.dev/llms.txt) rather than from memory, how to read any page as markdown, which files hold this install's secrets, and to compare `tapflow --version` against the changelog. Open your agent in that directory (`cd ~/.tapflow`) and it can also read your configuration and run `tapflow doctor`, `tapflow status` and `tapflow logs`.
+`init` writes an `AGENTS.md` into the install directory with a tapflow section between `<!-- tapflow:begin -->` and `<!-- tapflow:end -->`. It tells a coding agent to answer from [the documentation index](https://www.tapflow.dev/llms.txt) rather than from memory, how to read any page as markdown, which files hold this install's secrets, and to compare `tapflow --version` against the changelog. Open your agent in that directory (`cd ~/.tapflow`) and it can also read your configuration and run `tapflow doctor`, `tapflow status` and `tapflow logs`.
 
 Write your own notes outside the markers — `init` replaces only what is between them.
 

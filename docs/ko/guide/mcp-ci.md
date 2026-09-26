@@ -12,7 +12,7 @@ tapflow의 **AI 자동화 축**인 MCP 서버와 플로우 러너는 실험적 �
 
 CI 잡은 저장된 플로우를 `tapflow flow run`으로 재생합니다. 재생 경로에는 LLM이 없으므로 같은 입력에서 항상 같은 결과가 나오고 API 비용도 발생하지 않습니다.
 
-self-hosted Mac 러너에 relay와 에이전트가 상시 가동돼 있다면, 잡은 플로우를 실행하고 종료 코드로 성공 여부를 판별합니다.
+self-hosted Mac 러너에 릴레이와 에이전트가 상시 가동돼 있다면, 잡은 플로우를 실행하고 종료 코드로 성공 여부를 판별합니다.
 
 ```yaml
 name: Flow smoke test
@@ -43,11 +43,11 @@ jobs:
 
 플로우 YAML 문법, 셀렉터 규칙, 종료 코드 계약은 [플로우 레퍼런스](/ko/guide/writing-flows)에서 자세히 다룹니다.
 
-## 에이전트로 플로우 작성
+## 코딩 에이전트로 플로우 작성 {#authoring-flows-with-an-agent}
 
 플로우는 사람이 손으로 처음부터 쓰기보다, 에이전트가 앱을 탐색하며 생성하는 산출물입니다. Claude Code 같은 MCP 지원 에이전트에 시나리오를 자연어로 요청하면, 에이전트가 tapflow MCP 도구로 앱을 직접 조작해 동작을 확인하고, 검증된 시퀀스를 플로우 YAML로 뽑아 리포지토리에 커밋합니다.
 
-에이전트를 relay에 연결하려면 저장소 루트에 `.mcp.json`을 두고 relay를 가리키게 합니다.
+코딩 에이전트를 릴레이에 연결하려면 저장소 루트에 `.mcp.json`을 두고 릴레이를 가리키게 합니다.
 
 ```json
 {
@@ -84,8 +84,8 @@ jobs:
 
 | 항목 | 설명 |
 |------|------|
-| tapflow relay (상시 가동) | Mac 에이전트가 연결된 relay. LAN에 있는 Mac mini 한 대면 충분합니다. |
-| `TAPFLOW_TOKEN` | **API** 유형 PAT(`view, builds:write`). **Settings → Tokens**에서 발급하며, Admin에게만 보이는 메뉴입니다. CI 시크릿으로 저장하세요. |
+| tapflow 릴레이 (상시 가동) | Mac 에이전트가 연결된 릴레이. LAN에 있는 Mac mini 한 대면 충분합니다. |
+| `TAPFLOW_TOKEN` | **API** 유형 개인 액세스 토큰(PAT, `view, builds:write`). **Settings → Tokens**에서 발급하며, Admin에게만 보이는 메뉴입니다. CI 시크릿으로 저장하세요. |
 | `ANTHROPIC_API_KEY` | `claude`를 비대화형으로 실행하는 데 필요합니다. CI 시크릿으로 저장하세요. |
 | Claude Code CLI | `npm install -g @anthropic-ai/claude-code` |
 
@@ -98,7 +98,7 @@ jobs:
           WORKSPACE: ${{ github.workspace }}
         run: |
           claude --mcp-config .mcp.json -p "
-            사용 가능한 디바이스를 조회하고 부팅된 iOS 시뮬레이터에 연결하세요.
+            사용 가능한 기기를 조회하고 부팅된 iOS 시뮬레이터에 연결하세요.
             $WORKSPACE/MyApp.app.zip 빌드를 설치하고 앱을 실행하세요.
             스크린샷을 찍어 메인 화면이 정상적으로 로드됐는지 확인하세요.
             오류 메시지나 빈 화면이 있으면 문제를 설명하고 실패로 종료하세요.
@@ -109,6 +109,6 @@ jobs:
 
 ## 팁
 
-- **회귀 테스트는 플로우로, 탐색은 에이전트로** 나눕니다. CI에서 매번 도는 테스트는 결정적 재생이 적합하고, 새 시나리오 확인은 에이전트가 빠릅니다.
+- **회귀 테스트는 플로우로, 탐색은 코딩 에이전트로** 나눕니다. CI에서 매번 도는 테스트는 결정적 재생이 적합하고, 새 시나리오 확인은 에이전트가 빠릅니다.
 - **`.mcp.json`의 `env` 값은 런타임에 셸 환경 변수로 덮어써지므로** 시크릿이 저장소에 남지 않습니다.
-- **동시 세션** — relay는 세션 단위로 라우팅하므로, 다른 디바이스에 연결하는 여러 잡을 같은 relay에서 동시에 실행해도 됩니다.
+- **동시 세션** — 릴레이는 세션 단위로 라우팅하므로, 다른 기기에 연결하는 여러 잡을 같은 릴레이에서 동시에 실행해도 됩니다.

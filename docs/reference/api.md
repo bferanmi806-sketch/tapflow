@@ -6,7 +6,7 @@ All endpoints are served by the relay at `http(s)://<relay-host>/api/v1/`.
 - Dashboard users: session cookie (`tapflow_token`, set automatically on login)
 - CI/CD scripts: `Authorization: Bearer tflw_pat_<token>` header
 
-Only the endpoints below accept a PAT, and they accept the session cookie too.
+Only the endpoints below accept a personal access token (PAT), and they accept the session cookie too.
 
 | PAT scope | Endpoints |
 |-----------|-----------|

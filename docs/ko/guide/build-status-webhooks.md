@@ -47,11 +47,11 @@ TAPFLOW_WEBHOOK_SECRET_CI=a-long-random-string
 | `secretEnv` | 서명 secret이 담긴 환경 변수 이름 (선택, 강하게 권장) |
 | `enabled` | 활성 여부 (기본 `true`) |
 
-`tapflow.config.json` 변경은 relay를 다시 시작해야 반영됩니다.
+`tapflow.config.json` 변경은 릴레이를 다시 시작해야 반영됩니다.
 
 ### REST API로 등록
 
-런타임에 추가하려면 `POST /api/v1/webhooks`를 씁니다. 인증은 빌드 업로드와 동일하게 `builds:write` 스코프의 Personal Access Token을 사용합니다. 토큰 발급은 [빌드 배포](/ko/guide/build-distribution)의 토큰 생성 절을 참고하세요.
+런타임에 추가하려면 `POST /api/v1/webhooks`를 씁니다. 인증은 빌드 업로드와 동일하게 `builds:write` 스코프의 개인 액세스 토큰(PAT)을 사용합니다. 토큰 발급은 [빌드 배포](/ko/guide/build-distribution)의 토큰 생성 절을 참고하세요.
 
 ```sh
 curl -X POST https://your-relay/api/v1/webhooks \
