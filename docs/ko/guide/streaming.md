@@ -29,7 +29,7 @@ tapflow는 각 디바이스 화면을 H.264로 스트리밍하고 브라우저�
 | 터널(VPS + rathole, `tailscale serve`)을 거친 HTTPS 접속 | **Smooth** |
 | 공인 IP나 tailnet 주소(`100.x`)에서 릴레이 포트로 직접 접속 | **Remote** |
 
-터널 클라이언트는 릴레이 Mac 안에서 loopback으로 연결하므로 릴레이는 터널로 들어온 시청자를 외부 주소로 구분하지 못합니다. 그래서 HTTPS 터널을 거친 시청자는 원본 해상도를 받습니다. 반대로 Tailscale의 tailnet 주소는 사설 대역 목록에 없어 외부 주소로 분류됩니다. 평문 HTTP의 기본 Tailscale URL로 접속하면 1000px 스트림을 WASM 디코더로 받습니다. 터널 사용자의 대역폭이 부족하면 아래 `TAPFLOW_MAX_SIZE`로 제한값을 직접 지정하세요.
+터널 클라이언트는 릴레이 Mac 안에서 loopback으로 연결하므로 릴레이는 터널로 들어온 시청자를 외부 주소로 구분하지 못합니다. 그래서 HTTPS 터널을 거친 시청자는 원본 해상도를 받습니다. 반대로 Tailscale의 tailnet 주소는 사설 대역 목록에 없어 외부 주소로 분류됩니다. 기본 Tailscale URL(평문 HTTP)로 접속하면 1000px 스트림을 WASM 디코더로 받습니다. 터널 사용자의 대역폭이 부족하면 아래 `TAPFLOW_MAX_SIZE`로 제한값을 직접 지정하세요.
 
 공유 LAN을 **Standard**에서 **Smooth**로 올리려면 릴레이를 HTTPS로 제공하세요 — 릴레이 배포의 [외부 접속](/ko/guide/self-hosting#외부-접속)을 참고하세요.
 

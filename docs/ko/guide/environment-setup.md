@@ -65,7 +65,7 @@ setup은 한 번에 끝나도록 설계됐습니다. 설치가 필요한 단계�
 
 ### Android
 
-- **Homebrew**가 없으면 설치합니다. 아래 JDK 설치에 쓰입니다.
+- **Homebrew**가 없으면 설치합니다. 아래 JDK와 SDK 명령행 도구 설치에 쓰입니다.
 - **JDK**: SDK 도구 실행에 필요한 JDK가 없으면 `brew install --cask temurin`으로 설치합니다.
 - **Android SDK**: `~/Library/Android/sdk`에 명령행 도구·platform-tools·에뮬레이터·build-tools(aapt)·시스템 이미지를 자기완결 형태로 구성합니다. build-tools의 `aapt`는 APK 업로드 시 앱 이름·버전·패키지 이름을 읽는 데 씁니다. Android Studio GUI는 설치하지 않아도 됩니다.
 - **AVD**: 폼팩터별로 4종(소형 폰·표준 폰·대형 폰·태블릿)을 생성해, 해상도별로 골고루 테스트할 수 있게 합니다.

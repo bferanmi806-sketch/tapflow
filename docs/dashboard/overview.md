@@ -26,7 +26,7 @@ The full-screen device view. Opened when you click a build row in App Center. Pi
 | Touch | Click or tap anywhere on the simulator to send a touch event. |
 | Swipe | Click and drag to swipe. |
 | Pinch | Hold Option (Alt) and drag. |
-| Device buttons | The toolbar buttons differ by platform. iOS has **Home** and a software keyboard button; Android has **Home**, **Back**, **Recent apps**, and volume and power buttons. |
+| Device buttons | The toolbar buttons differ by platform. iOS has **Home** and a software keyboard button; Android has **Home**, **Back**, **Recent Apps**, and volume and power buttons. |
 | Deep link | Enter a deep link URL to open a specific screen in the app directly. |
 | Start / Stop recording | Start and stop recording from the toolbar. Recordings collect per build in the **Recordings** tab and can be downloaded. |
 | Comments | Leave threaded comments on the build in the **Comments** tab. You can attach images, and comments are visible to the whole team. |

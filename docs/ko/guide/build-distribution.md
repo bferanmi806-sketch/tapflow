@@ -34,7 +34,7 @@ tapflow는 빌드 도구가 아니라 완성된 아티팩트를 다룹니다. �
 | tapflow relay | 실행 중이고 CI 환경에서 접근 가능해야 합니다 |
 | Personal Access Token | **Settings → Tokens**에서 API 종류로 생성합니다(`builds:write` 권한 포함). 이 메뉴는 Admin에게만 보입니다 |
 
-## CI가 relay에 도달하려면
+## CI가 relay에 도달하려면 {#how-ci-reaches-the-relay}
 
 CI 잡이 relay의 `POST /api/v1/builds`에 접근할 수 있어야 합니다. relay는 에이전트와 같은 내부 네트워크에 두는 것이 원칙입니다([릴레이 배포](/ko/guide/self-hosting)). 그래서 CI가 어디서 실행되는지에 따라 경로가 갈립니다.
 
@@ -106,7 +106,7 @@ $GIT_COMMIT_MSG"
 
 ## GitHub Actions 예시
 
-이 예시는 relay 내부 주소에 닿는 self-hosted macOS 러너를 가정합니다. relay를 [VPS + rathole 터널](#ci가-relay에-도달하려면)처럼 공개 URL로 열어 두었다면 `runs-on`을 `macos-latest` 같은 클라우드 러너로 바꿔도 됩니다.
+이 예시는 relay 내부 주소에 닿는 self-hosted macOS 러너를 가정합니다. relay를 [VPS + rathole 터널](#how-ci-reaches-the-relay)처럼 공개 URL로 열어 두었다면 `runs-on`을 `macos-latest` 같은 클라우드 러너로 바꿔도 됩니다.
 
 ```yaml
 name: tapflow에 업로드

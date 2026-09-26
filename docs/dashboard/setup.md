@@ -40,7 +40,7 @@ Once signed in as Admin, go to **Settings → Team** and create invite links:
    - **QA**, **Viewer** — can do the shared actions below. The server does not currently tell these two roles apart.
 
    Uploading builds, changing a build's status, commenting and starting sessions are open to every signed-in member, whatever their role. Viewer is not read-only.
-3. Click **Generate invite link**. The link appears in the dialog and is copied to your clipboard. If SMTP is configured, the member also receives an invite email with a link to set their password.
+3. Click **Generate invite link**. The link appears in the dialog, and is also copied to your clipboard when the browser allows it. If SMTP is configured, the member also receives an invite email with a link to set their password.
 
 ::: tip No email server yet?
 If SMTP isn't configured, copy the link shown in the invite dialog and share it directly. See [Configuration](/reference/configuration) to set up SMTP.

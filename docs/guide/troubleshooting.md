@@ -17,7 +17,7 @@ Stop the one that is running, or use the session it already serves.
 ### Agent cannot connect to the relay
 
 1. Verify the relay is running.
-2. Check the scheme of the URL in the `--relay` option: `ws://` for a plain-HTTP relay, `wss://` when the relay has `tls` configured and serves HTTPS. The agent command that `tapflow start` and `tapflow relay start` print already carries the right scheme.
+2. Check the scheme of the URL in the `--relay` option: `ws://` for a plain-HTTP relay, `wss://` when the relay has `tls` configured and serves HTTPS. The agent command that `tapflow relay start` prints (and `tapflow start`, when this Mac runs no agent) already carries the right scheme, as does the one in the Agent token dialog.
 3. Run `tapflow doctor` to inspect your environment. If the relay is running on the same Mac, the `Port 4000` check fails because the relay holds the port. You can ignore that one.
 
 ## Opening a build fails with `spawn unknown error` {#spawn-unknown-error}
@@ -370,7 +370,7 @@ Run `tapflow doctor` again to confirm the check passes.
 
 ### No simulator is running
 
-`tapflow doctor` does not check whether a simulator is booted. It passes as long as at least one simulator is available, and warns only when there are none. The agent boots simulators on demand when a session starts.
+`tapflow doctor` does not pass or fail on whether a simulator is booted. It passes as long as at least one simulator is available, and warns only when there are none. The agent boots simulators on demand when a session starts.
 
 To boot a simulator before starting:
 

@@ -65,7 +65,7 @@ setup is designed to finish in one run. For steps that require installation, it 
 
 ### Android
 
-- **Homebrew** is installed if missing; the JDK step below uses it.
+- **Homebrew** is installed if missing; the JDK and SDK command-line tools steps below use it.
 - **JDK**: installs a JDK with `brew install --cask temurin` if the one required to run the SDK tools is missing.
 - **Android SDK**: builds a self-contained SDK at `~/Library/Android/sdk` with the command-line tools, platform-tools, emulator, build-tools (aapt), and a system image. The `aapt` from build-tools reads an APK's app name, version, and package name at upload time. The Android Studio GUI is not required.
 - **AVDs**: creates four devices across form factors (compact phone, standard phone, large phone, tablet) so you can test across resolutions.

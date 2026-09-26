@@ -34,7 +34,7 @@ tapflow works on the built artifact, not the build tool. A native Xcode or Gradl
 | tapflow relay | Running and reachable from your CI environment |
 | Personal Access Token | Create an API-type token in **Settings → Tokens** (it carries `builds:write`). Only Admins see this page |
 
-## How CI reaches the relay
+## How CI reaches the relay {#how-ci-reaches-the-relay}
 
 Your CI job has to reach the relay's `POST /api/v1/builds`. The relay is meant to stay on the same internal network as the agents ([Self-Hosting the Relay](/guide/self-hosting)), so the path depends on where CI runs.
 

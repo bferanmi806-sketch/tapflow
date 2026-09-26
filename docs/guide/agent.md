@@ -20,7 +20,7 @@ tapflow agent start --relay ws://192.168.x.x:4000 --token tflw_pat_xxxxxxxx
 |--------|---------|-------------|
 | `--relay` | `relay.url`, or `ws://localhost:[port]` | Relay WebSocket URL. Must start with `ws://` or `wss://`. When omitted, the agent uses `relay.url` from `tapflow.config.json` (or `TAPFLOW_RELAY_URL`), and falls back to `ws://localhost` on the configured port. If `relay.url` is an `http://` or `https://` address, the agent refuses to start, so pass `--relay` explicitly. |
 | `--platform` | auto-detect | Platform to run: `ios`, `android`, or `all`. When omitted, every platform available on this Mac runs. |
-| `--device` | all devices | Limit the agent to one device. Works for iOS simulators and Android AVDs, and must match the name or ID exactly. |
+| `--device` | all devices | Limit the agent to the devices whose name or ID matches. Works for iOS simulators and Android AVDs, and must match the name or ID exactly. |
 | `--token` | none | Token with the `agent` scope for remote relay authentication. Can also be passed via the `TAPFLOW_AGENT_TOKEN` environment variable. |
 
 ::: tip Wired LAN recommended
