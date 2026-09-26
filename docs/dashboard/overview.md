@@ -76,7 +76,7 @@ Visible to **Admin** only.
 
 ### Tokens
 
-Personal Access Tokens (PATs) for CI/CD scripts and API access. The sidebar shows this page to **Admin** only.
+Personal access tokens (PATs) for CI/CD scripts and API access. The sidebar shows this page to **Admin** only.
 
 - **New token** — enter a name, an expiry (1–365 days in this dialog, default 30), and a Type. **API** is for CI uploads and API access (scope `view, builds:write`); **Agent** connects remote Mac agents. The token is shown once — copy it immediately.
 - **Revoke** — instantly invalidates the token.

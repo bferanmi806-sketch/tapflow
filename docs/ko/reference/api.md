@@ -6,12 +6,12 @@
 - 대시보드 사용자: 세션 쿠키 (`tapflow_token`, 로그인 시 자동 설정)
 - CI/CD 스크립트: `Authorization: Bearer tflw_pat_<token>` 헤더
 
-아래 엔드포인트만 PAT를 받으며, 세션 쿠키로도 호출할 수 있습니다.
+아래 엔드포인트만 개인 액세스 토큰(PAT)을 받으며, 세션 쿠키로도 호출할 수 있습니다.
 
 | PAT scope | 엔드포인트 |
 |-----------|-----------|
 | `builds:write` | `POST /builds`, `GET /builds`, `GET /builds/:id`, `POST /comments`, 웹훅 엔드포인트 전체 |
-| `view` | `GET /apps`, `GET /sessions/:sessionId/screenshot`, `GET /sessions/:sessionId/ui-tree`, `/uploads/` 아래 파일(`/api/v1/`이 아닌 relay 루트 경로) |
+| `view` | `GET /apps`, `GET /sessions/:sessionId/screenshot`, `GET /sessions/:sessionId/ui-tree`, `/uploads/` 아래 파일(`/api/v1/`이 아닌 릴레이 루트 경로) |
 
 
 ## 에러 응답

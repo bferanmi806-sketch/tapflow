@@ -20,7 +20,7 @@ tapflow agent start --relay ws://192.168.x.x:4000 --token tflw_pat_xxxxxxxx
 |------|--------|------|
 | `--relay` | `relay.url` 또는 `ws://localhost:[port]` | 릴레이 WebSocket URL. `ws://` 또는 `wss://`로 시작해야 합니다. 생략하면 `tapflow.config.json`의 `relay.url`(또는 `TAPFLOW_RELAY_URL`)을 쓰고 둘 다 없으면 설정 파일의 포트로 `ws://localhost`에 연결합니다. `relay.url`이 `http://`·`https://` 주소라면 에이전트가 시작을 거부하므로 `--relay`를 명시하세요. |
 | `--platform` | 자동 감지 | 실행할 플랫폼: `ios`, `android`, `all`. 생략하면 이 Mac에서 쓸 수 있는 플랫폼을 모두 실행합니다. |
-| `--device` | 전체 디바이스 | 릴레이에 노출할 디바이스를 이름 또는 ID가 일치하는 것으로 한정합니다. iOS 시뮬레이터와 Android AVD 모두 이름 또는 ID가 정확히 일치해야 합니다. |
+| `--device` | 전체 기기 | 릴레이에 노출할 기기를 이름 또는 ID가 일치하는 것으로 한정합니다. iOS 시뮬레이터와 Android AVD 모두 이름 또는 ID가 정확히 일치해야 합니다. |
 | `--token` | 없음 | 원격 릴레이 인증용 `agent` 스코프 토큰. `TAPFLOW_AGENT_TOKEN` 환경변수로도 전달할 수 있습니다. |
 
 ::: tip 유선 LAN 권장

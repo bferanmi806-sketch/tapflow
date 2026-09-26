@@ -43,11 +43,11 @@ jobs:
 
 The flow YAML syntax, selector rules, and exit-code contract are covered in the [Flow Reference](/guide/writing-flows).
 
-## Authoring flows with an agent
+## Authoring flows with a coding agent {#authoring-flows-with-an-agent}
 
 Flows are an artifact an agent produces while exploring the app, not something you hand-write from scratch. Ask an MCP-capable agent like Claude Code for a scenario in plain language, and it drives the app through tapflow's MCP tools to confirm the behavior, then extracts the verified sequence as flow YAML and commits it to the repository.
 
-To connect the agent to the relay, keep a `.mcp.json` at the repo root pointing at the relay.
+To connect the coding agent to the relay, keep a `.mcp.json` at the repo root pointing at the relay.
 
 ```json
 {
@@ -85,7 +85,7 @@ This path needs a few more prerequisites.
 | Requirement | Notes |
 |-------------|-------|
 | tapflow relay (always-on) | A Mac with the agent connected. Can be a dedicated Mac mini on your LAN. |
-| `TAPFLOW_TOKEN` | An **API**-type PAT (`view, builds:write`), created in **Settings → Tokens**, a page only Admins see. Store as a CI secret. |
+| `TAPFLOW_TOKEN` | An **API**-type personal access token (PAT, `view, builds:write`), created in **Settings → Tokens**, a page only Admins see. Store as a CI secret. |
 | `ANTHROPIC_API_KEY` | Required to run `claude` non-interactively. Store as a CI secret. |
 | Claude Code CLI | `npm install -g @anthropic-ai/claude-code` |
 
@@ -109,6 +109,6 @@ Exploratory prompts work best when they describe outcomes. "Verify the home scre
 
 ## Tips
 
-- **Flows for regression, agents for exploration.** A test that runs every time in CI fits deterministic replay; checking a new scenario is faster with an agent.
+- **Flows for regression, coding agents for exploration.** A test that runs every time in CI fits deterministic replay; checking a new scenario is faster with an agent.
 - **The `env` values in `.mcp.json` are overridden at runtime by the shell environment**, so secrets never land in the repo.
 - **One session per device.** The relay routes by session, so running multiple jobs against the same relay concurrently is fine as long as they connect to different devices.

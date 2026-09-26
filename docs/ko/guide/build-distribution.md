@@ -31,21 +31,21 @@ tapflow는 빌드 도구가 아니라 완성된 아티팩트를 다룹니다. �
 
 | 항목 | 설명 |
 |------|------|
-| tapflow relay | 실행 중이고 CI 환경에서 접근 가능해야 합니다 |
-| Personal Access Token | **Settings → Tokens**에서 API 종류로 생성합니다(`builds:write` 권한 포함). 이 메뉴는 Admin에게만 보입니다 |
+| tapflow 릴레이 | 실행 중이고 CI 환경에서 접근 가능해야 합니다 |
+| 개인 액세스 토큰(PAT) | **Settings → Tokens**에서 API 종류로 생성합니다(`builds:write` 권한 포함). 이 메뉴는 Admin에게만 보입니다 |
 
-## CI가 relay에 도달하려면 {#how-ci-reaches-the-relay}
+## CI가 릴레이에 도달하려면 {#how-ci-reaches-the-relay}
 
-CI 잡이 relay의 `POST /api/v1/builds`에 접근할 수 있어야 합니다. relay는 에이전트와 같은 내부 네트워크에 두는 것이 원칙입니다([릴레이 배포](/ko/guide/self-hosting)). 그래서 CI가 어디서 실행되는지에 따라 경로가 갈립니다.
+CI 잡이 릴레이의 `POST /api/v1/builds`에 접근할 수 있어야 합니다. 릴레이는 에이전트와 같은 내부 네트워크에 두는 것이 원칙입니다([릴레이 배포](/ko/guide/self-hosting)). 그래서 CI가 어디서 실행되는지에 따라 경로가 갈립니다.
 
-| relay 배치 | CI가 업로드하는 방법 |
+| 릴레이 배치 | CI가 업로드하는 방법 |
 |-----------|----------------------|
-| **LAN 전용 (기본)** | 클라우드 러너(GitHub 호스티드 등)는 LAN relay에 닿지 못합니다. 내부 네트워크에 둔 self-hosted 러너에서 relay 내부 주소(`http://192.168.x.x:4000`)로 업로드하세요 |
-| **VPS + rathole 터널** | relay를 [외부 접근](/ko/guide/self-hosting)용으로 열어 두면 공개 URL(`https://your-vps.com`)로 어디서든 업로드할 수 있어 클라우드 CI에 가장 잘 맞습니다 |
+| **LAN 전용 (기본)** | 클라우드 러너(GitHub 호스티드 등)는 LAN 릴레이에 닿지 못합니다. 내부 네트워크에 둔 self-hosted 러너에서 릴레이 내부 주소(`http://192.168.x.x:4000`)로 업로드하세요 |
+| **VPS + rathole 터널** | 릴레이를 [외부 접근](/ko/guide/self-hosting)용으로 열어 두면 공개 URL(`https://your-vps.com`)로 어디서든 업로드할 수 있어 클라우드 CI에 가장 잘 맞습니다 |
 | **Tailscale 터널** | tailnet 멤버만 접근할 수 있으므로 CI 러너도 tailnet에 연결돼 있어야 합니다 |
 
-::: tip relay는 클라우드에 직접 올리지 않습니다
-relay를 fly.io·Railway 같은 서비스에 직접 배포하면 에이전트→relay 구간이 인터넷을 타면서 스트림이 끊깁니다(미지원). 공개 접근이 필요하면 relay는 내부 네트워크에 둔 채 터널로 노출하세요. VPS는 relay 호스트가 아니라 터널 호스트입니다.
+::: tip 릴레이는 클라우드에 직접 올리지 않습니다
+릴레이를 fly.io·Railway 같은 서비스에 직접 배포하면 에이전트→릴레이 구간이 인터넷을 타면서 스트림이 끊깁니다(미지원). 공개 접근이 필요하면 릴레이는 내부 네트워크에 둔 채 터널로 노출하세요. VPS는 릴레이 호스트가 아니라 터널 호스트입니다.
 :::
 
 ## 1. 토큰 생성
@@ -106,7 +106,7 @@ $GIT_COMMIT_MSG"
 
 ## GitHub Actions 예시
 
-이 예시는 relay 내부 주소에 닿는 self-hosted macOS 러너를 가정합니다. relay를 [VPS + rathole 터널](#how-ci-reaches-the-relay)처럼 공개 URL로 열어 두었다면 `runs-on`을 `macos-latest` 같은 클라우드 러너로 바꿔도 됩니다.
+이 예시는 릴레이 내부 주소에 닿는 self-hosted macOS 러너를 가정합니다. 릴레이를 [VPS + rathole 터널](#how-ci-reaches-the-relay)처럼 공개 URL로 열어 두었다면 `runs-on`을 `macos-latest` 같은 클라우드 러너로 바꿔도 됩니다.
 
 ::: warning self-hosted 러너와 pull request
 self-hosted 러너는 워크플로가 체크아웃한 코드를 내부 네트워크의 Mac에서 그대로 실행합니다. 아래의 `if:`는 포크에서 연 pull request를 건너뛰므로 같은 저장소의 브랜치만 이 러너에서 빌드됩니다. 이 조건을 지우지 말고 외부 pull request를 받는 공개 저장소에는 self-hosted 러너를 연결하지 마세요.

@@ -6,7 +6,7 @@ tapflow's **AI Automation axis** — the MCP server and the flow runner — is e
 
 `@tapflowio/mcp-server` exposes tapflow as a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server. Claude Code, Codex, and any other MCP-compatible LLM agent can control iOS simulators and Android emulators as native tools — no scripting, no hardcoded selectors.
 
-These three guides fit together: connect an agent here, learn the flow YAML format in the [Flow Reference](/guide/writing-flows), then combine them in [MCP in CI/CD](/guide/mcp-ci), where an agent authors a flow once and CI replays it deterministically.
+These three guides fit together: connect a coding agent here, learn the flow YAML format in the [Flow Reference](/guide/writing-flows), then combine them in [MCP in CI/CD](/guide/mcp-ci), where an agent authors a flow once and CI replays it deterministically.
 
 ## When to use this
 
@@ -33,7 +33,7 @@ The MCP server is a local process that bridges the LLM agent to your self-hosted
 ## Prerequisites
 
 - A running tapflow relay.
-- A **Personal Access Token (PAT)** created in the dashboard.
+- A **personal access token (PAT)** created in the dashboard.
   Go to **Settings → Tokens → New token** and choose the **API** Type. Only Admins see the Tokens page.
 
 ## Installation
@@ -89,7 +89,7 @@ Any MCP-compatible client can use tapflow. Add the following to your MCP config 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `TAPFLOW_RELAY_URL` | Relay WebSocket URL | `ws://localhost:4000` |
-| `TAPFLOW_TOKEN` | Personal Access Token | (required) |
+| `TAPFLOW_TOKEN` | PAT | (required) |
 
 ## Available tools
 

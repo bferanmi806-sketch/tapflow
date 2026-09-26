@@ -1,8 +1,8 @@
 # 설정 파일
 
-릴레이는 이 머신의 설치 디렉토리에서 `tapflow.config.json`을 읽습니다. 기본값은 `~/.tapflow`이고, `TAPFLOW_HOME`이나 현재 디렉토리의 기존 설치가 있으면 그쪽입니다([명령이 쓰는 설치 디렉토리](/ko/guide/configure#명령이-쓰는-설치-디렉토리)). `tapflow init`을 실행해 파일을 생성하고, 설정을 변경한 뒤에는 릴레이를 재시작해야 적용됩니다.
+릴레이는 이 머신의 설치 디렉터리에서 `tapflow.config.json`을 읽습니다. 기본값은 `~/.tapflow`이고, `TAPFLOW_HOME`이나 현재 디렉터리의 기존 설치가 있으면 그쪽입니다([명령이 쓰는 설치 디렉터리](/ko/guide/configure#명령이-쓰는-설치-디렉토리)). `tapflow init`을 실행해 파일을 생성하고, 설정을 변경한 뒤에는 릴레이를 재시작해야 적용됩니다.
 
-파일 안의 상대 경로는 그 파일을 기준으로 풉니다. `tsconfig.json`이나 `litestream.yml`과 같은 방식입니다. `~/.tapflow/tapflow.config.json`의 `"dataDir": "data"`는 어느 디렉토리에서 명령을 실행하든 `~/.tapflow/data`를 뜻합니다.
+파일 안의 상대 경로는 그 파일을 기준으로 풉니다. `tsconfig.json`이나 `litestream.yml`과 같은 방식입니다. `~/.tapflow/tapflow.config.json`의 `"dataDir": "data"`는 어느 디렉터리에서 명령을 실행하든 `~/.tapflow/data`를 뜻합니다.
 
 ## 예시
 
@@ -30,8 +30,8 @@
 
 | 키 | 설명 |
 |----|------|
-| `local` | 이 머신에서 실행하는 relay 서버 설정 |
-| `relay.url` | 연결할 relay URL. `tapflow agent start`, `tapflow admin init`, `tapflow status`, `tapflow logs`의 기본값으로 사용됩니다. 설정 시 `--relay` 플래그 없이 동작합니다. 비어있으면 로컬 모드(`ws://localhost:[local.port]`)를 사용합니다. `ws://` 또는 `wss://`로 적어야 합니다. `tapflow agent start`는 다른 스킴을 거부하고 나머지 명령은 필요하면 HTTP 스킴으로 바꿔 씁니다. |
+| `local` | 이 머신에서 실행하는 릴레이 서버 설정 |
+| `relay.url` | 연결할 릴레이 URL. `tapflow agent start`, `tapflow admin init`, `tapflow status`, `tapflow logs`의 기본값으로 사용됩니다. 설정 시 `--relay` 플래그 없이 동작합니다. 비어있으면 로컬 모드(`ws://localhost:[local.port]`)를 사용합니다. `ws://` 또는 `wss://`로 적어야 합니다. `tapflow agent start`는 다른 스킴을 거부하고 나머지 명령은 필요하면 HTTP 스킴으로 바꿔 씁니다. |
 | `tunnel` | `tapflow start`와 `tapflow relay start`가 함께 띄우는 터널 설정. 아래 터널 섹션을 참고하세요. |
 | `tls` | LAN HTTPS(보안 컨텍스트) 설정. WebCodecs 하드웨어 디코드에 필요합니다. 아래 HTTPS 섹션을 참고하세요. |
 | `smtp` | 초대·비밀번호 재설정 이메일 발송을 위한 SMTP 설정 |
@@ -44,18 +44,18 @@
 
 환경변수는 항상 설정 파일보다 우선합니다. 서버 환경이나 CI에서 유용합니다.
 
-비밀은 데이터 디렉토리의 `.env` 파일에도 둘 수 있습니다. 릴레이가 시작할 때 이 파일을 먼저 읽으므로, 아래 변수를 셸 대신 파일에 적어도 됩니다. 우선순위는 **셸 환경변수 > `.env` > 설정 파일** 순입니다. 파일 형식과 예외(`TAPFLOW_DATA_DIR`)는 [tapflow 설정](/ko/guide/configure)에서 다룹니다.
+비밀은 데이터 디렉터리의 `.env` 파일에도 둘 수 있습니다. 릴레이가 시작할 때 이 파일을 먼저 읽으므로, 아래 변수를 셸 대신 파일에 적어도 됩니다. 우선순위는 **셸 환경변수 > `.env` > 설정 파일** 순입니다. 파일 형식과 예외(`TAPFLOW_DATA_DIR`)는 [tapflow 설정](/ko/guide/configure)에서 다룹니다.
 
 | 환경변수 | Config 키 | 기본값 | 설명 |
 |---------|-----------|--------|------|
 | `TAPFLOW_PORT` | `local.port` | `4000` | 서버 포트 |
 | `TAPFLOW_TUNNEL_PORT` | `local.tunnelPort` | 터널 설정이 있으면 `4001`, 없으면 꺼짐 | rathole, `tailscale serve`, `cloudflared` 같은 터널 클라이언트가 연결하는 loopback 전용 포트. 릴레이 머신 안에서 온 연결이라도 이 포트로 들어오면 원격으로 보므로, 로그인하거나 토큰을 내야 합니다. `tapflow start`와 `tapflow relay start`는 `tunnel` 설정이 있으면 이 포트를 엽니다. Docker 이미지를 포함한 그 밖의 경우에는 이 변수나 `local.tunnelPort`로 포트를 지정해야 열립니다. 릴레이와 같은 네트워크 네임스페이스에서 연결하는 터널이나 프록시가 있다면 설정하세요. 릴레이가 `4001`을 쓰면 기본값은 `4002`로 바뀝니다. 컨테이너 안에서는 릴레이와 네트워크 네임스페이스를 공유하는 프로세스만 연결할 수 있습니다. |
-| `JWT_SECRET` | — | *(자동 생성)* | JWT 서명 키 (환경변수 전용). 설정하지 않으면 최초 부팅 시 강력한 per-install 시크릿을 자동으로 생성해 데이터 디렉토리에 저장합니다. 직접 설정할 때는 32자 이상이어야 하며 짧으면 릴레이가 시작하지 않습니다. |
-| `TAPFLOW_HOME` | — | `~/.tapflow` | 설치 디렉토리. `tapflow.config.json`과 기본 데이터 디렉토리가 있는 곳이고 모든 명령이 이 값을 읽습니다. 상대 경로는 현재 디렉토리 기준이고 빈 값은 미설정으로 봅니다. 없는 디렉토리를 가리키면 릴레이를 실행하거나 릴레이에 접속하는 명령이 멈춥니다. `tapflow init`은 대신 그 디렉토리를 만듭니다. |
-| `TAPFLOW_DATA_DIR` | `local.dataDir` | `<설치>/data` | DB·업로드 디렉토리. 환경변수는 현재 디렉토리 기준, `local.dataDir`은 설정 파일 기준으로 상대 경로를 풉니다. 이미 `.tapflow/data`나 `.tapflow-data`가 있는 설치는 그대로 씁니다. |
-| `TAPFLOW_RELAY_URL` | `relay.url` | *(비어있음)* | CLI 명령어의 기본 relay URL |
+| `JWT_SECRET` | — | *(자동 생성)* | JWT 서명 키 (환경변수 전용). 설정하지 않으면 최초 부팅 시 강력한 per-install 시크릿을 자동으로 생성해 데이터 디렉터리에 저장합니다. 직접 설정할 때는 32자 이상이어야 하며 짧으면 릴레이가 시작하지 않습니다. |
+| `TAPFLOW_HOME` | — | `~/.tapflow` | 설치 디렉터리. `tapflow.config.json`과 기본 데이터 디렉터리가 있는 곳이고 모든 명령이 이 값을 읽습니다. 상대 경로는 현재 디렉터리 기준이고 빈 값은 미설정으로 봅니다. 없는 디렉터리를 가리키면 릴레이를 실행하거나 릴레이에 접속하는 명령이 멈춥니다. `tapflow init`은 대신 그 디렉터리를 만듭니다. |
+| `TAPFLOW_DATA_DIR` | `local.dataDir` | `<설치>/data` | DB·업로드 디렉터리. 환경변수는 현재 디렉터리 기준, `local.dataDir`은 설정 파일 기준으로 상대 경로를 풉니다. 이미 `.tapflow/data`나 `.tapflow-data`가 있는 설치는 그대로 씁니다. |
+| `TAPFLOW_RELAY_URL` | `relay.url` | *(비어있음)* | CLI 명령어의 기본 릴레이 URL |
 | `TAPFLOW_AGENT_TOKEN` | — | *(비어있음)* | 원격 릴레이 인증용 `agent` 스코프 토큰. `--token` 플래그가 우선합니다. [에이전트 설정](/ko/guide/agent#원격-릴레이-인증)을 참고하세요. |
-| `TAPFLOW_TOKEN` | — | *(비어있음)* | `tapflow flow run`과 MCP 서버가 원격 릴레이에 접속할 때 쓰는 PAT. `flow run`에서는 `--token` 플래그가 우선합니다. |
+| `TAPFLOW_TOKEN` | — | *(비어있음)* | `tapflow flow run`과 MCP 서버가 원격 릴레이에 접속할 때 쓰는 개인 액세스 토큰(PAT). `flow run`에서는 `--token` 플래그가 우선합니다. |
 | `TAPFLOW_TUNNEL_TOKEN` | — | *(비어있음)* | rathole 터널 인증에 쓰는 비밀 문자열. `tunnel.provider`가 `rathole`일 때 필요합니다. |
 | `TAPFLOW_LEAN` | `agent.lean` | `off` | `on` 또는 `off`. 다른 값은 경고와 함께 무시하고 설정 파일의 값을 씁니다. |
 | `TAPFLOW_TRUSTED_PROXIES` | — | *(비어있음)* | 신뢰하는 리버스 프록시 IP 목록(콤마 구분, 예: `127.0.0.1,::1`). 릴레이를 같은 호스트의 리버스 프록시 뒤에서 실행할 때 이 값을 설정하면, 프록시 주소 대신 `X-Forwarded-For`에 담긴 실제 클라이언트 IP를 사용합니다. 비어 있으면 전달 헤더를 파싱하지 않습니다. |
@@ -64,9 +64,9 @@
 | `TAPFLOW_MAX_UNPACKED_BYTES` | — | 업로드 상한의 4배 | iOS `.tar.gz` 빌드를 풀었을 때의 크기 상한(바이트). |
 | `TAPFLOW_MAX_COMMENT_BYTES` | — | `5242880` (5 MB) | 댓글 첨부 이미지 크기 상한(바이트). |
 | `IDLE_TIMEOUT_MS` | — | `300000` (5분) | 브라우저가 세션을 떠난 뒤 세션을 종료하기까지 기다리는 시간(밀리초). |
-| `TAPFLOW_RESOURCE_THRESHOLD_PERCENT` | — | `80` | agent Mac의 CPU나 메모리 사용률이 이 값(%)을 넘으면 새 세션 참여를 거절합니다. |
+| `TAPFLOW_RESOURCE_THRESHOLD_PERCENT` | — | `80` | 에이전트 Mac의 CPU나 메모리 사용률이 이 값(%)을 넘으면 새 세션 참여를 거절합니다. |
 | `TAPFLOW_WS_BACKPRESSURE_BYTES` | — | `1048576` (1 MB) | 브라우저 소켓당 바이너리 프레임 드롭 임계값. 버퍼가 이 값을 초과하면 프레임이 드롭됩니다. |
-| `TAPFLOW_AGENT_GRACE_MS` | — | `15000` (15초) | agent 연결이 끊긴 뒤 그 agent가 돌아오기를 기다리며 세션을 유지하는 시간(밀리초). agent는 프로세스 시작 후 약 1초면 등록되므로 기본값은 재시작을 넉넉히 덮습니다. 이 동안 열린 탭은 멈춘 화면 대신 기다리는 중임을 표시하고, 해당 기기는 다른 사람에게 제공되지 않습니다. `0`은 유지를 끄며, agent 소켓이 닫히는 즉시 세션이 종료됩니다(이 기능이 생기기 전 동작). 빈 값·숫자가 아닌 값·음수는 기본값으로 되돌아가고 시작 시 경고를 남깁니다. |
+| `TAPFLOW_AGENT_GRACE_MS` | — | `15000` (15초) | 에이전트 연결이 끊긴 뒤 그 에이전트가 돌아오기를 기다리며 세션을 유지하는 시간(밀리초). 에이전트는 프로세스 시작 후 약 1초면 등록되므로 기본값은 재시작을 넉넉히 덮습니다. 이 동안 열린 탭은 멈춘 화면 대신 기다리는 중임을 표시하고, 해당 기기는 다른 사람에게 제공되지 않습니다. `0`은 유지를 끄며, 에이전트 소켓이 닫히는 즉시 세션이 종료됩니다(이 기능이 생기기 전 동작). 빈 값·숫자가 아닌 값·음수는 기본값으로 되돌아가고 시작 시 경고를 남깁니다. |
 | `TAPFLOW_CLOUDFLARE_TOKEN` | — | *(비어있음)* | `tls.dnsProvider`가 `cloudflare`일 때 DNS-01 발급에 쓰는 Cloudflare API 토큰. |
 | `TAPFLOW_VERCEL_TOKEN` | — | *(비어있음)* | `tls.dnsProvider`가 `vercel`일 때 쓰는 Vercel API 토큰. |
 | `TAPFLOW_VERCEL_TEAM_ID` | — | *(비어있음)* | 도메인이 팀 스코프에 속할 때 필요한 Vercel 팀 ID. |
@@ -83,7 +83,7 @@
 | `LOG_LEVEL` | — | `info` | 로그 수준. `debug`, `info`, `warn`, `error` 중 하나입니다. 릴레이와 에이전트 모두 읽습니다. |
 
 ::: tip JWT_SECRET은 선택 사항입니다
-단일 릴레이라면 `JWT_SECRET`을 따로 설정하지 않아도 됩니다. 설정하지 않으면 릴레이가 최초 부팅 시 강력한 per-install 시크릿을 생성해 데이터 디렉토리(`jwt-secret`, 소유자 전용 권한)에 저장합니다.
+단일 릴레이라면 `JWT_SECRET`을 따로 설정하지 않아도 됩니다. 설정하지 않으면 릴레이가 최초 부팅 시 강력한 per-install 시크릿을 생성해 데이터 디렉터리(`jwt-secret`, 소유자 전용 권한)에 저장합니다.
 
 고정 키가 필요한 경우, 예를 들어 여러 릴레이 인스턴스가 하나의 시크릿을 공유해야 한다면 `JWT_SECRET`을 명시적으로 설정하세요:
 
@@ -91,7 +91,7 @@
 openssl rand -hex 32
 ```
 
-생성한 값은 데이터 디렉토리의 `.env`(기본값 `~/.tapflow/data/.env`)에 적거나 셸 환경변수로 주입합니다. 32자보다 짧은 값은 거부됩니다.
+생성한 값은 데이터 디렉터리의 `.env`(기본값 `~/.tapflow/data/.env`)에 적거나 셸 환경변수로 주입합니다. 32자보다 짧은 값은 거부됩니다.
 :::
 
 ::: warning 같은 호스트의 프록시와 터널은 터널 포트로 연결하세요
@@ -170,7 +170,7 @@ chmod 600 .tapflow/data/.env
 | `TAPFLOW_MAX_SIZE_EXTERNAL` | `1000` | `TAPFLOW_MAX_SIZE`가 없을 때 외부 연결에 쓰는 상한(px). |
 | `TAPFLOW_IOS_MAX_SIZE` / `TAPFLOW_ANDROID_MAX_SIZE` | *(연결 방식별)* | `TAPFLOW_MAX_SIZE`의 플랫폼별 오버라이드. |
 | `TAPFLOW_ANDROID_FPS` | `30` | Android 에뮬레이터 캡처 프레임율(gRPC 경로). |
-| `TAPFLOW_ANDROID_BACKEND` | *(자동)* | Android 백엔드 강제 — `grpc` 또는 `scrcpy`. 미설정 시 디바이스 종류로 자동 선택. |
+| `TAPFLOW_ANDROID_BACKEND` | *(자동)* | Android 백엔드 강제 — `grpc` 또는 `scrcpy`. 미설정 시 기기 종류로 자동 선택. |
 | `TAPFLOW_ANDROID_GRPC_PORT` | `8554` | tapflow가 부팅하는 에뮬레이터에 gRPC 포트를 고를 때 시작하는 포트. 이 값부터 2씩 올려 가며 비어 있는 첫 포트를 씁니다. |
 | `TAPFLOW_AUDIO` | *(켜짐)* | `off`이면 기기 오디오 스트리밍을 끕니다. [오디오](/ko/guide/audio)를 참고하세요. |
 | `TAPFLOW_ALLOW_DISPLAY_SLEEP` | *(비어있음)* | 값을 설정하면 세션 중에도 호스트 디스플레이가 꺼질 수 있습니다. 시스템 절전은 계속 막습니다. [에이전트 설정](/ko/guide/agent#호스트-디스플레이와-절전)을 참고하세요. |
@@ -227,13 +227,13 @@ rathole을 쓰려면 `TAPFLOW_TUNNEL_TOKEN` 환경변수도 설정해야 합니�
 
 ## HTTPS (보안 컨텍스트)
 
-브라우저의 하드웨어 가속 영상 디코드(WebCodecs)는 보안 컨텍스트(HTTPS)에서만 동작합니다. HTTP로 접속하면 소프트웨어 디코드로 자동 폴백합니다. 같은 LAN의 팀원에게 더 부드러운 화면을 주려면 relay를 HTTPS로 종단하세요. `tls`를 설정하면 relay가 같은 포트에서 HTTPS와 WSS를 함께 종단합니다.
+브라우저의 하드웨어 가속 영상 디코드(WebCodecs)는 보안 컨텍스트(HTTPS)에서만 동작합니다. HTTP로 접속하면 소프트웨어 디코드로 자동 폴백합니다. 같은 LAN의 팀원에게 더 부드러운 화면을 주려면 릴레이를 HTTPS로 종단하세요. `tls`를 설정하면 릴레이가 같은 포트에서 HTTPS와 WSS를 함께 종단합니다.
 
 발급 방식은 두 가지입니다.
 
 ### 자기 DNS 계정으로 자동 발급 (`byo-api-token`)
 
-자기 도메인과 DNS 업체 API 토큰만 있으면 relay가 Let's Encrypt에서 DNS-01 방식으로 인증서를 자동 발급하고 갱신합니다.
+자기 도메인과 DNS 업체 API 토큰만 있으면 릴레이가 Let's Encrypt에서 DNS-01 방식으로 인증서를 자동 발급하고 갱신합니다.
 
 ```json
 {
@@ -254,9 +254,9 @@ rathole을 쓰려면 `TAPFLOW_TUNNEL_TOKEN` 환경변수도 설정해야 합니�
 | `tls.publishAddress` | 도메인 A 레코드를 이 머신의 LAN IP로 자동 발행합니다. 기본 `true`이며, DNS를 직접 관리하려면 `false`로 둡니다. |
 | `tls.address` | 자동 감지한 LAN IP 대신 사용할 IP. 멀티 NIC나 VPN 환경에서 오버라이드용입니다. |
 
-API 토큰은 설정 파일이 아니라 `tapflow init`이 데이터 디렉토리에 만들어 두는 `.env` 파일(기본값 `~/.tapflow/data/.env`)에 적습니다. Cloudflare는 `TAPFLOW_CLOUDFLARE_TOKEN`, Vercel은 `TAPFLOW_VERCEL_TOKEN`을 씁니다. 팀 도메인이면 `TAPFLOW_VERCEL_TEAM_ID`도 함께 넣습니다. 설치 디렉토리가 git 저장소 안에 있으면 `tapflow init`이 데이터 디렉토리를 `.gitignore`에 추가하므로 이 파일은 커밋되지 않습니다. 데이터 디렉토리를 다른 곳으로 지정했다면 그 경로도 무시 목록에 들어 있는지 확인하세요. 환경변수로 직접 설정한 값이 있으면 파일보다 우선합니다. 이 파일이 어떻게 만들어지고 읽히는지는 [tapflow 설정](/ko/guide/configure)에서 다룹니다.
+API 토큰은 설정 파일이 아니라 `tapflow init`이 데이터 디렉터리에 만들어 두는 `.env` 파일(기본값 `~/.tapflow/data/.env`)에 적습니다. Cloudflare는 `TAPFLOW_CLOUDFLARE_TOKEN`, Vercel은 `TAPFLOW_VERCEL_TOKEN`을 씁니다. 팀 도메인이면 `TAPFLOW_VERCEL_TEAM_ID`도 함께 넣습니다. 설치 디렉터리가 git 저장소 안에 있으면 `tapflow init`이 데이터 디렉터리를 `.gitignore`에 추가하므로 이 파일은 커밋되지 않습니다. 데이터 디렉터리를 다른 곳으로 지정했다면 그 경로도 무시 목록에 들어 있는지 확인하세요. 환경변수로 직접 설정한 값이 있으면 파일보다 우선합니다. 이 파일이 어떻게 만들어지고 읽히는지는 [tapflow 설정](/ko/guide/configure)에서 다룹니다.
 
-`publishAddress`가 켜져 있으면 relay가 부팅할 때 자기 LAN IP를 도메인 A 레코드로 발행하고 주기적으로 갱신합니다. 팀원은 DNS를 건드리지 않고 도메인만 열면 됩니다.
+`publishAddress`가 켜져 있으면 릴레이가 부팅할 때 자기 LAN IP를 도메인 A 레코드로 발행하고 주기적으로 갱신합니다. 팀원은 DNS를 건드리지 않고 도메인만 열면 됩니다.
 
 ### 직접 준비한 인증서 (`import-cert`)
 
@@ -277,7 +277,7 @@ API 토큰은 설정 파일이 아니라 `tapflow init`이 데이터 디렉토�
 | `tls.certPath` | fullchain 인증서 PEM 경로. |
 | `tls.keyPath` | 개인 키 PEM 경로. |
 
-시작할 때 tapflow는 `localhost`가 아닌 첫 번째 구체적인 DNS SAN을 접속 주소로 안내하며, SAN 확장이 없으면 구체적인 subject CN을 사용합니다. DNS SAN이 있지만 사용할 수 있는 이름이 없으면(예: 와일드카드 전용 인증서) `localhost`를 안내하고 경고를 출력합니다. IP 전용 SAN이나 잘못된 인증서도 `localhost`로 돌아가지만 이 DNS SAN 경고는 출력하지 않습니다. 팀원이 이 주소를 사용하려면 안내된 이름이 relay의 LAN 주소로 해석되어야 합니다.
+시작할 때 tapflow는 `localhost`가 아닌 첫 번째 구체적인 DNS SAN을 접속 주소로 안내하며, SAN 확장이 없으면 구체적인 subject CN을 사용합니다. DNS SAN이 있지만 사용할 수 있는 이름이 없으면(예: 와일드카드 전용 인증서) `localhost`를 안내하고 경고를 출력합니다. IP 전용 SAN이나 잘못된 인증서도 `localhost`로 돌아가지만 이 DNS SAN 경고는 출력하지 않습니다. 팀원이 이 주소를 사용하려면 안내된 이름이 릴레이의 LAN 주소로 해석되어야 합니다.
 
 ::: tip 접속과 알려진 제약
 - 인증서는 도메인에 묶입니다. 따라서 `https://[도메인]:[포트]`로 접속해야 합니다. `localhost`나 IP로 접속하면 이름 불일치 경고가 납니다.
@@ -286,9 +286,9 @@ API 토큰은 설정 파일이 아니라 `tapflow init`이 데이터 디렉토�
 - 테스트로 스테이징 인증서(`TAPFLOW_ACME_STAGING=1`)를 발급하면 브라우저가 신뢰하지 않아 경고가 납니다. 같은 도메인을 스테이징에서 운영용으로 바꾼 직후에는 브라우저가 이전 인증서 오류를 캐시할 수 있습니다. 이때는 시크릿 창이나 기록 삭제로 다시 확인하세요.
 :::
 
-## 데이터 디렉토리
+## 데이터 디렉터리 {#데이터-디렉토리}
 
-설치 디렉토리는 다음과 같이 구성됩니다. `tapflow.config.json`, `AGENTS.md`, `CLAUDE.md`는 `tapflow init`이 만들고 DNS API 토큰으로 HTTPS를 고르면 `data/.env`도 만듭니다. `data/`의 나머지는 릴레이가 실행 중에 만듭니다.
+설치 디렉터리는 다음과 같이 구성됩니다. `tapflow.config.json`, `AGENTS.md`, `CLAUDE.md`는 `tapflow init`이 만들고 DNS API 토큰으로 HTTPS를 고르면 `data/.env`도 만듭니다. `data/`의 나머지는 릴레이가 실행 중에 만듭니다.
 
 ```text
 ~/.tapflow/
@@ -309,9 +309,9 @@ API 토큰은 설정 파일이 아니라 `tapflow init`이 데이터 디렉토�
 
 플로우 파일은 설치의 일부가 아닙니다. 앱 저장소의 `.tapflow/flows/`에 두고, 실패 스크린샷은 `.tapflow/artifacts/`에 쌓입니다.
 
-데이터 디렉토리 위치를 변경하려면 `TAPFLOW_DATA_DIR` 환경변수 또는 `local.dataDir`을 사용합니다. 데이터 디렉토리를 백업하면 모든 데이터가 보존됩니다.
+데이터 디렉터리 위치를 변경하려면 `TAPFLOW_DATA_DIR` 환경변수 또는 `local.dataDir`을 사용합니다. 데이터 디렉터리를 백업하면 모든 데이터가 보존됩니다.
 
-릴레이를 실행한 디렉토리에 데이터를 두던 버전에서 올라와도 아무것도 옮겨지지 않습니다. 그 디렉토리에 `tapflow.config.json`, `.tapflow/data`, `.tapflow-data` 중 하나가 있으면 계속 설치로 인정되므로 거기서 실행한 릴레이는 전과 똑같은 파일을 씁니다. `local.dataDir`도 옆에 있는 설정 파일 기준으로 풀리므로 구 `init`과 `tapflow migrate data-dir`이 써 둔 `.tapflow/data`가 그대로 유효합니다. 통합 레이아웃으로 바꾸려면 릴레이를 멈추고 `tapflow migrate data-dir`을 한 번 실행하세요. `.tapflow-data/`를 `.tapflow/data/`로 원자적 rename 하고(복사 없음, 유실 없음), `local.dataDir`이 구 기본값을 가리키면 다시 써주며, `.gitignore`도 갱신합니다.
+릴레이를 실행한 디렉터리에 데이터를 두던 버전에서 올라와도 아무것도 옮겨지지 않습니다. 그 디렉터리에 `tapflow.config.json`, `.tapflow/data`, `.tapflow-data` 중 하나가 있으면 계속 설치로 인정되므로 거기서 실행한 릴레이는 전과 똑같은 파일을 씁니다. `local.dataDir`도 옆에 있는 설정 파일 기준으로 풀리므로 구 `init`과 `tapflow migrate data-dir`이 써 둔 `.tapflow/data`가 그대로 유효합니다. 통합 레이아웃으로 바꾸려면 릴레이를 멈추고 `tapflow migrate data-dir`을 한 번 실행하세요. `.tapflow-data/`를 `.tapflow/data/`로 원자적 rename 하고(복사 없음, 유실 없음), `local.dataDir`이 구 기본값을 가리키면 다시 써주며, `.gitignore`도 갱신합니다.
 
 ## SMTP 설정
 
@@ -329,4 +329,4 @@ SMTP가 설정되지 않으면 초대 이메일과 비밀번호 재설정 이메
 | `webhooks[].secretEnv` | HMAC 서명 secret이 담긴 환경 변수 이름. secret은 config.json에 직접 두지 않습니다. |
 | `webhooks[].enabled` | 활성 여부. 기본 `true` |
 
-`webhooks` 변경은 relay를 다시 시작해야 반영됩니다.
+`webhooks` 변경은 릴레이를 다시 시작해야 반영됩니다.

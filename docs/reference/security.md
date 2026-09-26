@@ -32,7 +32,7 @@ To apply TLS to the browser ↔ relay leg (WAN), use a reverse proxy or tunnel i
 
 ## PAT-based authentication
 
-Programmatic access to tapflow is controlled by **Personal Access Tokens (PAT)**.
+Programmatic access to tapflow is controlled by **personal access tokens (PATs)**.
 
 - Tokens are issued per user. When someone leaves, revoke their token.
 - Each token carries a **scope** that limits what it can do:
