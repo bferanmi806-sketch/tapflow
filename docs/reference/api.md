@@ -6,6 +6,13 @@ All endpoints are served by the relay at `http(s)://<relay-host>/api/v1/`.
 - Dashboard users: session cookie (`tapflow_token`, set automatically on login)
 - CI/CD scripts: `Authorization: Bearer tflw_pat_<token>` header
 
+Only the endpoints below accept a PAT; everything else accepts only the session cookie. These endpoints accept the session cookie too.
+
+| PAT scope | Endpoints |
+|-----------|-----------|
+| `builds:write` | `POST /builds`, `GET /builds`, `GET /builds/:id`, `POST /comments`, every webhook endpoint |
+| `view` | `GET /apps`, `GET /sessions/:sessionId/screenshot`, `GET /sessions/:sessionId/ui-tree`, files under `/uploads/` |
+
 
 ## Error responses
 
@@ -17,10 +24,14 @@ All errors return JSON in the form `{ "error": "..." }`.
 | `401` | Not authenticated or session expired | `{ "error": "Unauthorized" }` |
 | `403` | Forbidden | `{ "error": "Forbidden" }` or `{ "error": "Insufficient scope" }` |
 | `404` | Resource not found | `{ "error": "Build not found" }` |
+| `409` | Not possible in the current state | `{ "error": "Device is not booted" }` |
 | `410` | Token expired | `{ "error": "Invitation expired or not found" }` |
+| `429` | Too many requests (with a `Retry-After` header) | `{ "error": "Too many attempts. Try again later." }` |
 | `500` | Server error | `{ "error": "Internal server error" }` |
+| `502` | The agent is unreachable or returned an error | `{ "error": "Agent offline" }` |
+| `504` | The agent did not answer in time | `{ "error": "Screenshot timed out" }` |
 
-Successful deletes return `204` with no body.
+Deleting a comment, a member or a token returns `204` with no body. Deleting an app or a webhook, and cancelling a scheduled build deletion, return `200 { "ok": true }`.
 
 
 ## Auth
@@ -72,6 +83,8 @@ Body (JSON):
 { "ok": true, "role": "Admin" }
 ```
 
+Repeated failed sign-ins from the same address for the same email return `429` with a `Retry-After` header.
+
 
 ### `POST /api/v1/auth/logout`
 
@@ -95,10 +108,12 @@ Return the currently signed-in user's info.
   "id": 1,
   "email": "admin@example.com",
   "displayName": "Admin",
-  "avatarUrl": "/api/v1/uploads/avatars/...",
+  "avatarUrl": "/uploads/avatars/user-1.png",
   "role": "Admin"
 }
 ```
+
+`avatarUrl` is `null` when there is no profile image.
 
 
 ### `POST /api/v1/auth/change-password`
@@ -126,7 +141,7 @@ Check whether an invitation token is valid.
 
 ```
 Query:
-  token  string  required (32-char hex)
+  token  string  required (64-char hex)
 ```
 
 **Response `200`**
@@ -177,7 +192,7 @@ Query:
 { "ok": true }
 ```
 
-Returns `410` if expired.
+A reset token is valid for 2 hours after it is issued. Returns `410` if expired.
 
 
 ### `POST /api/v1/auth/reset-password`
@@ -298,7 +313,7 @@ Only `file` is required; every other field is optional.
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `file` | Yes | The build artifact. iOS: `.app.zip` or `.tar.gz` / `.tgz` (a simulator build); Android: `.apk`. Max 500 MB. `.ipa` and `.aab` are rejected. |
+| `file` | Yes | The build artifact. iOS: `.app.zip` or `.tar.gz` / `.tgz` (a simulator build); Android: `.apk`. Max 500 MB by default (`TAPFLOW_MAX_BUILD_BYTES` changes it). `.ipa` and `.aab` are rejected. |
 | `status` | No | Initial review status — one of `Backlog`, `In Progress`, `Done`, `Rejected`. Omit to leave it unset. |
 | `label` | No | Free-text label to identify the build in App Center (e.g. a branch name or `rc-1`). |
 | `platform` | No | `ios` or `android`. Derived from the file type when omitted. |
@@ -314,6 +329,7 @@ Only `file` is required; every other field is optional.
 {
   "id": 42,
   "app_id": 7,
+  "name": "My App",
   "version_name": "1.2.3",
   "build_number": "89",
   "bundle_id": "com.example.app",
@@ -331,7 +347,7 @@ Return a paginated list of builds.
 ```
 Query:
   page      number                                   page number (default: 0)
-  limit     number                                   page size (default: 20)
+  limit     number                                   page size (default: 20, max: 100)
   q         string                                   search by version name
   platform  ios|android                              platform filter
   status    Backlog|In Progress|Done|Rejected        status filter
@@ -368,6 +384,7 @@ Return a single build.
   "platform": "ios",
   "bundle_id": "com.example.app",
   "uploaded_at": "2025-05-15T12:00:00.000Z",
+  "completed_at": null,
   "delete_after": null
 }
 ```
@@ -399,13 +416,64 @@ Schedule the build for deletion. The server sets `delete_after = now + TAPFLOW_B
 **Response `200`**
 
 ```json
-{ "ok": true }
+{ "ok": true, "delete_after": "2025-05-22 12:00:00" }
 ```
 
 
 ### `DELETE /api/v1/builds/:id/schedule-deletion`
 
 Cancel a scheduled deletion, clearing `delete_after`.
+
+**Response `200`**
+
+```json
+{ "ok": true }
+```
+
+
+## Webhooks
+
+Manage the endpoints notified when a build's review status changes. Every call takes the session cookie or a PAT with the `builds:write` scope. Payloads and signature verification are covered in [Webhooks](/guide/build-status-webhooks).
+
+### `GET /api/v1/webhooks`
+
+Return the registered webhooks. The secret itself is never returned; `has_secret` says whether one is set.
+
+**Response `200`**
+
+```json
+{
+  "webhooks": [
+    { "id": 1, "url": "https://ci.internal/hooks/tapflow", "enabled": true, "has_secret": true, "created_at": "2025-05-01 00:00:00" }
+  ]
+}
+```
+
+
+### `POST /api/v1/webhooks`
+
+Register a webhook.
+
+```
+Body (JSON):
+  url      string        required
+  secret   string|null   optional (HMAC signing secret)
+  enabled  boolean       optional (default: true)
+```
+
+**Response `201`**: the registered webhook, in the same shape as an item in the `GET` list
+
+
+### `PATCH /api/v1/webhooks/:id`
+
+Update whichever of `url`, `secret` and `enabled` the body carries.
+
+**Response `200`**: the updated webhook. `400` when there is nothing to update, `404` when the webhook does not exist.
+
+
+### `DELETE /api/v1/webhooks/:id`
+
+Delete a webhook.
 
 **Response `200`**
 
@@ -433,8 +501,8 @@ Query:
     "id": 1,
     "body": "Login button is not tappable",
     "created_at": "2025-05-15T12:00:00.000Z",
-    "author": "qa@example.com",
-    "authorAvatarUrl": "...",
+    "author": "Kim QA",
+    "authorAvatarUrl": "/uploads/avatars/user-3.png",
     "attachments": [
       { "id": 3, "file_path": "/uploads/comments/...", "mime": "image/png" }
     ]
@@ -442,10 +510,12 @@ Query:
 ]
 ```
 
+`author` is the author's display name, or the part of their email before `@` when they have none. `authorAvatarUrl` is `null` when there is no profile image.
+
 
 ### `POST /api/v1/comments`
 
-Post a comment. Supports image attachments.
+Post a comment. Supports image attachments. Call it with the session cookie or a PAT with the `builds:write` scope.
 
 ```
 Content-Type: multipart/form-data
@@ -464,9 +534,11 @@ File:
   "id": 1,
   "body": "Login button is not tappable",
   "created_at": "2025-05-15T12:00:00.000Z",
-  "author": "qa@example.com"
+  "author": "Kim QA"
 }
 ```
+
+`author` here is the display name as stored, so it is `null` when the author has none.
 
 
 ### `DELETE /api/v1/comments/:id`
@@ -503,7 +575,7 @@ Invite a team member. **Admin only**. Invitations expire after **7 days**.
 
 ```
 Body (JSON):
-  email  string                       required
+  email  string                       optional (omit to send no invitation email)
   role   Admin|Developer|QA|Viewer    optional (default: QA)
 ```
 
@@ -513,7 +585,7 @@ Body (JSON):
 { "token": "abc123...", "emailSent": true, "inviteUrl": "http://192.168.0.10:4000/invite?token=abc123..." }
 ```
 
-If SMTP is not configured, `emailSent: false` is returned. When `inviteUrl` is not `null`, it is the link the invitation email carries. It is built from the tunnel's `publicUrl`, otherwise `relay.url` (`TAPFLOW_RELAY_URL`). When `tapflow start` or `tapflow relay start` runs the tunnel, that is the address the tunnel got, including one Tailscale detected. A standalone relay uses the configured value. An `http://` tunnel address is not used when the relay serves HTTPS. `inviteUrl` is `null` when there is no candidate, or when the only one is an address a teammate cannot open, such as `localhost`. In that case, build the link from the address teammates use to reach the relay: `<relay-url>/invite?token=<token>`.
+If SMTP is not configured or `email` is omitted, `emailSent: false` is returned. When `inviteUrl` is not `null`, it is the link the invitation email carries. It is built from the tunnel's `publicUrl`, otherwise `relay.url` (`TAPFLOW_RELAY_URL`). When `tapflow start` or `tapflow relay start` runs the tunnel, that is the address the tunnel got, including one Tailscale detected. A standalone relay uses the configured value. An `http://` tunnel address is not used when the relay serves HTTPS. `inviteUrl` is `null` when there is no candidate, or when the only one is an address a teammate cannot open, such as `localhost`. In that case, build the link from the address teammates use to reach the relay: `<relay-url>/invite?token=<token>`.
 
 
 ### `PATCH /api/v1/team/members/:id`
@@ -569,7 +641,10 @@ Create a PAT. The token value is returned **only once** at creation time.
 Body (JSON):
   name            string  required
   expires_in_days number  optional (omit for no expiry)
+  scope           string  optional (comma-separated; default: view,builds:write)
 ```
+
+`scope` accepts `view`, `builds:write` and `agent`. The `agent` scope is what an agent on a remote Mac uses to connect to the relay, and only an Admin can issue it; any other role gets `403`.
 
 **Response `201`**
 
@@ -611,13 +686,15 @@ File:
 
 ### `GET /api/v1/settings`
 
-Return team settings.
+Return team settings. Requires sign-in.
 
 **Response `200`**
 
 ```json
-{ "team_name": "My Team", "logo_url": "..." }
+{ "team_name": "My Team", "logo_url": "/uploads/team/logo.png" }
 ```
+
+`logo_url` is `null` when there is no logo.
 
 
 ### `PATCH /api/v1/settings`
@@ -653,7 +730,7 @@ Query:
   buildId    number  optional
 
 File:
-  video  video file (webm, etc.)  required
+  (any field name)  video file (webm, etc.)  required
 ```
 
 **Response `200`**
@@ -698,7 +775,7 @@ Download a recording file. Returns `404` for expired files.
 
 ### `GET /api/v1/agents`
 
-Return the list of connected agent names.
+Return the names of agents that have resource samples on record. Samples are kept for 30 days, so an agent that is not connected now can still appear.
 
 **Response `200`**
 
@@ -727,11 +804,72 @@ Query:
 Data is sampled once per minute and retained for 30 days.
 
 
+## Sessions
+
+Find a `sessionId` in the MCP server's `list_devices` result. Both endpoints take the session cookie or a PAT with the `view` scope.
+
+### `GET /api/v1/sessions/:sessionId/screenshot`
+
+Return the session device's current screen as an image.
+
+```
+Query:
+  format  png|jpeg  optional (default: png)
+```
+
+**Response `200`**: an `image/png` or `image/jpeg` body
+
+Returns `404` when the session does not exist, `409` when the device is shut down, `502` when the agent is offline or the capture fails, and `504` when there is no answer within 10 seconds.
+
+
+### `GET /api/v1/sessions/:sessionId/ui-tree`
+
+Return the UI elements on the session device's current screen.
+
+**Response `200`**
+
+```json
+{
+  "elements": [
+    {
+      "role": "button",
+      "label": "Sign in",
+      "identifier": "login_button",
+      "frame": { "x": 0.1, "y": 0.8, "width": 0.8, "height": 0.06 },
+      "enabled": true
+    }
+  ]
+}
+```
+
+`frame` is a 0–1 fraction of the screen size. The error status codes match the screenshot endpoint, with a 15-second timeout.
+
+
+## Relay
+
+### `GET /api/v1/relay/host`
+
+Return the relay address details the dashboard uses to build addresses for teammates. Requires sign-in.
+
+**Response `200`**
+
+```json
+{
+  "lanHost": "192.168.0.10",
+  "port": 4000,
+  "publicBaseUrl": "https://tap.example.com",
+  "agentRelayUrl": "wss://tap.example.com"
+}
+```
+
+A value that cannot be determined is `null`. `lanHost` is always `null` when the relay runs in a container.
+
+
 ## Logs
 
 ### `GET /api/v1/logs`
 
-Return the relay's in-memory log buffer.
+Return the relay's in-memory log buffer (last 500 lines).
 
 ```
 Query:
@@ -742,7 +880,6 @@ Query:
 
 ```json
 [
-  "[2025-05-15T12:00:00.000Z] Agent mac-mini-office connected",
-  "..."
+  "[2025-05-15T12:00:00.000Z] ..."
 ]
 ```

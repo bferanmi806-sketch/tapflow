@@ -8,7 +8,7 @@ tapflow does not route anything through an external cloud service.
 
 | Data | Where it lives | Sent externally |
 |------|----------------|-----------------|
-| Build files (.ipa / .apk) | Local storage on the Mac running the relay | ❌ |
+| Build files (.app.zip / .tar.gz / .apk) | Local storage on the Mac running the relay | ❌ |
 | Device stream (video · touch) | Browser ↔ relay ↔ agent — all internal | ❌ |
 | Session recordings | Stored on the relay's Mac; expire after 72h and are purged automatically | ❌ |
 | Logs | The Mac running the relay and agents | ❌ |
@@ -28,7 +28,7 @@ browser (anywhere) ──WAN──▶ relay ◀──LAN──▶ agent
 
 The agent ↔ relay leg is LAN-internal traffic. Because the device stream never passes through an external service, your app's UI and behavior are not exposed outside your network.
 
-To apply TLS to the browser ↔ relay leg (WAN), use a reverse proxy or tunnel in front of the relay. See the [Self-Hosting guide](/guide/self-hosting) for details.
+To apply TLS to the browser ↔ relay leg (WAN), use a reverse proxy or tunnel in front of the relay. See the [Self-Hosting guide](/guide/self-hosting) for details. The relay can also terminate TLS itself through its [`tls` setting](/reference/configuration#https-secure-context).
 
 ## PAT-based authentication
 
@@ -37,7 +37,8 @@ Programmatic access to tapflow is controlled by **Personal Access Tokens (PAT)**
 - Tokens are issued per user. When someone leaves, revoke their token.
 - Each token carries a **scope** that limits what it can do:
   - `builds:write` — upload builds, for CI/CD pipelines (issued from the dashboard under Settings → Tokens)
-  - `view` — read and device-stream access
+  - `view` — read the app list, uploaded files, session screenshots and UI trees
+  - `agent` — connect an agent on a remote Mac to the relay (only an Admin can issue one)
 - Dashboard access for team members is governed separately by **roles** (Admin / Developer / QA / Viewer), not by PATs.
 
 ## Access control boundaries
@@ -45,9 +46,9 @@ Programmatic access to tapflow is controlled by **Personal Access Tokens (PAT)**
 Here is what tapflow handles and what you manage as the infrastructure operator.
 
 **tapflow provides:**
-- PAT authentication and scope enforcement on every endpoint
+- API authentication: build upload and listing and webhooks require a signed-in session or a `builds:write` PAT; the app list, uploaded files, screenshots and UI trees require a signed-in session or a `view` PAT. The rest of the dashboard API accepts only a signed-in session.
+- Device stream (WebSocket) authentication: a remote connection needs a signed-in session or a PAT.
 - Sign-in for every connection that does not reach the relay port over loopback, including tunnel traffic, which arrives on a separate loopback port of its own
-- Session isolation between teams — no access to another team's builds or streams
 - No outbound data transmission to external services
 
 **You are responsible for:**
@@ -55,6 +56,7 @@ Here is what tapflow handles and what you manage as the infrastructure operator.
 - TLS on the WAN leg (reverse proxy or tunnel configuration)
 - Network access control to the relay host (firewall, VPN, etc.)
 - Managing `JWT_SECRET` and other environment variables for the relay
+- Team separation: one relay serves one team, so run a separate relay for each team whose builds and streams must stay apart
 
 ::: tip Running on an internal network only
 If the relay is only reachable within your internal LAN, you can operate without WAN-leg TLS. This is appropriate when every team member is on the same network — office Wi-Fi or a shared VPN.

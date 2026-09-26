@@ -16,7 +16,7 @@ Simulators alone, though, do not carry that benefit across a team — only peopl
 
 ## Extending hardware lifetime
 
-When new machines are issued, the ones they replace are left over. Running one as an agent host keeps it in service instead of sending it for disposal. A simulator host often depends more on having enough memory than on CPU speed, so a Mac a generation or two behind can still handle the role reliably.
+When new machines are issued, the ones they replace are left over. Running one as an agent host keeps it in service instead of sending it for disposal. A simulator host often depends more on having enough memory than on CPU speed, so a Mac a generation or two behind can still handle the role reliably. The agent does need an [Apple Silicon Mac](/guide/requirements), though.
 
 Test devices and agent hosts also age on different clocks. Test devices are replaced on a schedule set by OS support windows and the need to validate new OS releases. An agent host faces little of that pressure and can stay in service until macOS stops supporting it. Over eight years, repeatedly replacing devices costs more than twice the manufacturing carbon of keeping one Mac.
 
