@@ -288,7 +288,7 @@ API 토큰은 설정 파일이 아니라 `tapflow init`이 데이터 디렉토�
 
 ## 데이터 디렉토리
 
-설치 디렉토리는 다음과 같이 구성됩니다. `tapflow.config.json`, `AGENTS.md`, `CLAUDE.md`, `data/.env`는 `tapflow init`이 만들고 `data/`의 나머지는 릴레이가 실행 중에 만듭니다.
+설치 디렉토리는 다음과 같이 구성됩니다. `tapflow.config.json`, `AGENTS.md`, `CLAUDE.md`는 `tapflow init`이 만들고, DNS API 토큰으로 HTTPS를 고르면 `data/.env`도 만듭니다. `data/`의 나머지는 릴레이가 실행 중에 만듭니다.
 
 ```text
 ~/.tapflow/

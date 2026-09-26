@@ -286,7 +286,7 @@ At startup, tapflow advertises the first concrete DNS SAN other than `localhost`
 
 ## Data directory
 
-The install directory is laid out as follows. `tapflow init` writes `tapflow.config.json`, `AGENTS.md`, `CLAUDE.md` and `data/.env`; the relay creates the rest of `data/` as it runs.
+The install directory is laid out as follows. `tapflow init` writes `tapflow.config.json`, `AGENTS.md` and `CLAUDE.md`, plus `data/.env` when you choose HTTPS with a DNS API token; the relay creates the rest of `data/` as it runs.
 
 ```text
 ~/.tapflow/
