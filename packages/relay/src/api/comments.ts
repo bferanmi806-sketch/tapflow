@@ -107,6 +107,12 @@ export function handleCreateComment(
     }
 
     const db = getDb()
+    // Checked here rather than left to the FK: this listener is async, so the constraint error
+    // would surface as an unhandled rejection, and the CLI's handler exits the relay on one.
+    if (!db.prepare('SELECT 1 FROM builds WHERE id = ?').get(fields.build_id)) {
+      if (attachmentPath) unlinkSafe(attachmentPath, 'rejected attachment')
+      return json(res, 404, { error: 'Build not found' })
+    }
     const commentResult = db.prepare(
       "INSERT INTO comments (build_id, author_id, body, created_at) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))"
     ).run(fields.build_id, auth.userId, fields.body.trim())
@@ -121,7 +127,8 @@ export function handleCreateComment(
     }
 
     const comment = db.prepare(`
-      SELECT c.id, c.body, c.created_at, u.display_name as author
+      SELECT c.id, c.body, c.created_at,
+             COALESCE(u.display_name, substr(u.email, 1, instr(u.email, '@') - 1)) as author
       FROM comments c JOIN users u ON u.id = c.author_id
       WHERE c.id = ?
     `).get(commentId)

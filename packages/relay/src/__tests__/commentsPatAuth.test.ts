@@ -50,11 +50,16 @@ describe('POST /api/v1/comments auth', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tapflow-comments-pat-'))
     initDb(path.join(tmpDir, 'test.db'))
     const db = getDb()
+    // Two users, so attribution can't pass by picking the first row. The CI user has no display
+    // name: the POST response must fall back to the email's local part, as the comment list does.
     db.prepare('INSERT INTO users (email, display_name, role, password_hash) VALUES (?, ?, ?, ?)')
-      .run('ci@example.com', 'CI Bot', 'Developer', makePasswordHash('password123'))
-    db.prepare('INSERT INTO personal_access_tokens (user_id, name, token_hash, scope) VALUES (1, ?, ?, ?)')
-      .run('ci', hashPat(WRITE_PAT), 'view,builds:write')
-    db.prepare('INSERT INTO personal_access_tokens (user_id, name, token_hash, scope) VALUES (1, ?, ?, ?)')
+      .run('admin@example.com', 'Admin', 'Admin', makePasswordHash('password123'))
+    db.prepare('INSERT INTO users (email, display_name, role, password_hash) VALUES (?, ?, ?, ?)')
+      .run('ci-bot@example.com', null, 'Developer', makePasswordHash('password123'))
+    // `builds:write` alone is what the Build Distribution guide tells CI to create.
+    db.prepare('INSERT INTO personal_access_tokens (user_id, name, token_hash, scope) VALUES (2, ?, ?, ?)')
+      .run('ci', hashPat(WRITE_PAT), 'builds:write')
+    db.prepare('INSERT INTO personal_access_tokens (user_id, name, token_hash, scope) VALUES (2, ?, ?, ?)')
       .run('viewer', hashPat(VIEW_PAT), 'view')
     db.prepare(`INSERT INTO apps (name, bundle_id_key, platform) VALUES ('Coffee', 'com.example.coffee', 'ios')`).run()
     const r = db.prepare(`
@@ -84,7 +89,7 @@ describe('POST /api/v1/comments auth', () => {
   it('accepts a PAT with builds:write and attributes the comment to its owner', async () => {
     const r = await postComment(port, { Authorization: `Bearer ${WRITE_PAT}` }, { build_id: buildId, body: 'Branch: main' })
     expect(r.status).toBe(201)
-    expect(r.body.author).toBe('CI Bot')
+    expect(r.body.author).toBe('ci-bot')
     expect(r.body.body).toBe('Branch: main')
   })
 
@@ -104,8 +109,18 @@ describe('POST /api/v1/comments auth', () => {
   })
 
   it('still accepts the dashboard cookie', async () => {
-    const cookie = `tapflow_token=${signJwt({ userId: 1, email: 'ci@example.com', role: 'Developer' })}`
+    const cookie = `tapflow_token=${signJwt({ userId: 1, email: 'admin@example.com', role: 'Admin' })}`
     const r = await postComment(port, { Cookie: cookie }, { build_id: buildId, body: 'from the dashboard' })
     expect(r.status).toBe(201)
+    expect(r.body.author).toBe('Admin')
+  })
+
+  // comments.build_id is a foreign key, and the INSERT runs inside busboy's async `finish` listener:
+  // an unknown id used to throw there as an unhandled rejection, which exits the relay.
+  it('answers 404 for a build that does not exist, and the relay keeps serving', async () => {
+    const r = await postComment(port, { Authorization: `Bearer ${WRITE_PAT}` }, { build_id: '999999', body: 'orphan' })
+    expect(r.status).toBe(404)
+    const again = await postComment(port, { Authorization: `Bearer ${WRITE_PAT}` }, { build_id: buildId, body: 'still up' })
+    expect(again.status).toBe(201)
   })
 })
