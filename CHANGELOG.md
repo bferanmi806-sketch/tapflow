@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`POST /api/v1/comments` accepts a PAT with the `builds:write` scope.** The CI step in the Build Distribution guide that posts branch and commit info as a comment got a 401, because the route accepted only the dashboard cookie, and failed the job under `curl -sf`. It now works with the same token that uploaded the build; a token without `builds:write` gets a 403.
+
 ## [0.24.0] - 2026-09-26
 
 ### Breaking Changes

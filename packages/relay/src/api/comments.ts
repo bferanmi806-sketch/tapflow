@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import busboy from 'busboy'
 import { getDb } from '../db.js'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, requireBuildAuth } from '../middleware/auth.js'
 import { json } from '../router.js'
 import { unlinkSafe } from '../lib/uploads.js'
 
@@ -62,7 +62,9 @@ export function handleCreateComment(
   res: http.ServerResponse,
   uploadsDir: string
 ): void {
-  const auth = requireAuth(req, res)
+  // Build auth, not cookie-only: CI posts build metadata here with the same PAT it uploaded with
+  // (docs/guide/build-distribution.md), so a `builds:write` PAT has to be accepted.
+  const auth = requireBuildAuth(req, res)
   if (!auth) return
 
   const bb = busboy({ headers: req.headers, limits: { fileSize: maxCommentAttachmentBytes() } })
