@@ -21,7 +21,7 @@ VitePress 표준 구조를 따른다. 사이드바·shiki 테마 주입은 `.vit
 모든 문서는 한국어(`docs/ko/`)와 영어(`docs/`) 두 버전을 함께 작성한다.
 
 - 한국어가 소스 언어다. 내용 변경 시 한국어를 먼저 수정하고 영어에 반영한다.
-- 새 페이지를 추가할 때는 `docs/ko/`와 `docs/` 양쪽에 파일을 만들고, `config.ts`의 `koSidebar`와 `enSidebar` 모두에 등록한다.
+- 새 페이지를 추가할 때는 `docs/ko/`와 `docs/` 양쪽에 파일을 만들고, `config.ts`의 `koSidebar`와 `enSidebar` 모두에 등록한다. `docs/public/llms.txt`에도 행을 추가한다(`scripts/__tests__/agentReadableDocs.test.mjs`가 영어 페이지 집합과 일치하는지 검사한다). 작성 절차 전체는 `/write-docs` 커맨드에 있다.
 - 내용·구조가 두 버전 간에 일치해야 한다. 한쪽에만 있는 섹션을 만들지 않는다.
 
 
@@ -31,8 +31,11 @@ VitePress 표준 구조를 따른다. 사이드바·shiki 테마 주입은 `.vit
 
 iOS/Android 양쪽을 지원하는 기능을 설명할 때 특정 플랫폼 도구명을 사용하지 않는다.
 
-- ❌ "no Xcode", "Xcode 설치 없이", "Android Studio 불필요"
-- ✅ "no IDE", "별도 도구 설치 없이", "개발 환경 설치 없이"
+| ❌ | ✅ |
+|----|-----|
+| "no Xcode", "Xcode 설치 없이" | "no IDE", "별도 도구 설치 없이" |
+| "Android Studio 불필요" | "개발 환경 설치 없이", IDE |
+| `xcodebuild` | (iOS 전용 섹션에서만 허용) |
 
 예외: 해당 섹션이 실제로 iOS 전용 또는 Android 전용인 경우 플랫폼명 명시 가능.
 
