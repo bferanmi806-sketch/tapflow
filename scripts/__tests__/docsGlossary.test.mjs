@@ -56,6 +56,7 @@ const ALLOW = [
   { text: '**AGENT ALREADY RUNNING**', reason: 'literal CLI output the reader will see' },
   { text: '에이전트 (Agents)', reason: 'API reference heading glossing the English resource group' },
   { text: '릴레이 (Relay)', reason: 'API reference heading glossing the English resource group' },
+  { text: '디바이스 팜', reason: 'industry term (device farm); "기기 팜" is not a phrase anyone searches for' },
 ]
 
 const stripLine = (line) => line

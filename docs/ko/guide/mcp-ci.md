@@ -98,7 +98,7 @@ jobs:
           WORKSPACE: ${{ github.workspace }}
         run: |
           claude --mcp-config .mcp.json -p "
-            사용 가능한 디바이스를 조회하고 부팅된 iOS 시뮬레이터에 연결하세요.
+            사용 가능한 기기를 조회하고 부팅된 iOS 시뮬레이터에 연결하세요.
             $WORKSPACE/MyApp.app.zip 빌드를 설치하고 앱을 실행하세요.
             스크린샷을 찍어 메인 화면이 정상적으로 로드됐는지 확인하세요.
             오류 메시지나 빈 화면이 있으면 문제를 설명하고 실패로 종료하세요.
