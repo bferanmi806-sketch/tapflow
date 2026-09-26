@@ -23,7 +23,7 @@ LLM 에이전트가 시뮬레이터를 자동으로 조작하는 방식은 [CI/C
 
 등록 방법은 두 가지입니다. 설정을 파일로 관리하면 `tapflow.config.json`으로 선언하고, 런타임에 추가·삭제하려면 REST API를 씁니다. 두 방식으로 등록한 엔드포인트는 함께 발송됩니다.
 
-### tapflow.config.json으로 선언 (권장) {#config-json으로-선언-권장}
+### tapflow.config.json으로 선언 (권장) {#declare-in-config-json-recommended}
 
 `tapflow.config.json`의 `webhooks` 배열에 등록합니다. self-hosted 운영자가 TLS·SMTP 같은 다른 설정과 한 파일에서 함께 관리하는 방식입니다.
 

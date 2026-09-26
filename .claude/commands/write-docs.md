@@ -122,7 +122,7 @@ KO 헤딩은 `사용 방법 / 플랫폼 지원 / 제한 사항 / 설정(운영�
 
 ## 4. 헤딩 id와 앵커
 
-- 다른 페이지가 링크할 만한 새 헤딩에는 EN/KO 양쪽에 같은 `{#english-id}`를 붙인다. KO 자동 슬러그는 한글(`#외부-접속`)이라 헤딩 문구만 고쳐도 링크가 조용히 끊기고, VitePress 빌드는 `#앵커`를 검사하지 않는다.
+- 다른 페이지가 링크할 만한 새 헤딩에는 EN/KO 양쪽에 같은 `{#english-id}`를 붙인다. KO 자동 슬러그는 한글(`#외부-접속`)이라 헤딩 문구만 고쳐도 링크가 끊긴다. VitePress 빌드는 `#앵커`를 검사하지 않으므로 `docsAnchors` 테스트가 대신 잡는다.
 - 기존 헤딩 문구를 바꿀 때는 원래 슬러그를 `{#기존-id}`로 명시해 id를 유지한다.
 - 배포된 코드에 박힌 앵커는 절대 옮기거나 바꾸지 않는다.
   - `/reference/configuration#https-secure-context`: `packages/dashboard/components/perf/PerformanceModeNotice.tsx:13`. EN 헤딩 `## HTTPS (secure context)`의 **자동 슬러그**라서 헤딩 문구만 바꿔도 끊긴다.
@@ -228,7 +228,7 @@ run: |
 4. 사실이 바뀌었다면 `docs/` 전체 grep 후 다른 출현도 EN/KO 모두 수정
 5. 새 페이지라면 사이드바 EN/KO와 `llms.txt`에 등록(필요하면 테스트의 페이지 수도 수정)
 6. 소스 대조(작성 후), 그리고 `docs/AGENTS.md` 용어집 대조(산문의 표기가 표와 같은지)
-7. `pnpm docs:build`, 새 페이지였다면 `pnpm test:scripts`. 오류가 나면 고치고 다시 돌린다. `docs:build`는 없는 페이지 링크만 잡고 `#앵커`는 잡지 않으므로 바꾼 앵커 링크는 직접 확인한다.
+7. `pnpm docs:build`, 새 페이지였다면 `pnpm test:scripts`. 오류가 나면 고치고 다시 돌린다. `#앵커` 링크, EN/KO 헤딩 구조, CLI 플래그와 `cli.md`의 일치는 `pnpm test:scripts`와 cli 테스트가 검사한다(`docsAnchors`, `docsLocaleParity`, `cliDocsParity`).
 8. **AI tells detect 게이트**: KO 산문은 `.claude/ai-tells/rules-ko.md`로, EN 산문은 `.claude/ai-tells/rules-en.md`로 `detect`한다. 두 파일의 **docs carve-out**(격식체 종결 균일, glossary 볼드, `~할 수 있습니다` 기능 서술, em dash 단문 closing)을 적용하고, 코드·수치·테이블·frontmatter는 건드리지 않는다.
    - **detect는 게이트일 뿐 자동으로 고치지 않는다. `rewrite`를 자동 호출하지 않는다.** P0/P1(EN)과 S1(KO)을 완료 보고에 적고 **사람 판단**을 받는다. (정책: `/ai-tells` 커맨드 §0)
 

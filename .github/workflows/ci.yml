@@ -7,9 +7,9 @@ on:
     branches: [main]
 
 jobs:
-  # **What `test-swift` reads, decided once so two places cannot disagree about it.**
+  # **What `test-swift` and `docs` read, decided once so two places cannot disagree about it.**
   #
-  # That job is the repository's only macOS job and its longest by an order of magnitude: measured at
+  # `test-swift` is the repository's only macOS job and its longest by an order of magnitude: measured at
   # 969s against 276s for `test` and 100s for the Docker build, so it alone sets how long a PR waits.
   # Ten of the last thirty merges touched `ios-netfilter`; the other twenty paid sixteen minutes for a
   # suite that could not have been affected.
@@ -26,6 +26,7 @@ jobs:
       contents: read
     outputs:
       netfilter: ${{ steps.filter.outputs.netfilter }}
+      docs: ${{ steps.filter.outputs.docs }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,6 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           changed=true
+          docs=true
 
           # **`HEAD^1` on a pull request, because the checkout is the merge commit.**
           # `actions/checkout` gives `refs/pull/N/merge` for a `pull_request` event, whose first
@@ -76,13 +78,22 @@ jobs:
               else
                 changed=false
               fi
+              # `docs`, for the job of that name: the pages, the lockfile (a VitePress bump changes the
+              # build) and the root manifest (where `docs:build` is defined). Same collected list, same
+              # fail-safe default.
+              if grep -qE '^(docs/|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|package\.json$|\.nvmrc$|\.github/workflows/ci\.yml$)' <<<"$files"; then
+                docs=true
+              else
+                docs=false
+              fi
             else
-              echo "git diff failed against $base — running the Swift job rather than guessing"
+              echo "git diff failed against $base — running the Swift and docs jobs rather than guessing"
             fi
           else
-            echo "no usable base (${BASE:-unset}) — running the Swift job rather than guessing"
+            echo "no usable base (${BASE:-unset}) — running the Swift and docs jobs rather than guessing"
           fi
           echo "netfilter=$changed" | tee -a "$GITHUB_OUTPUT"
+          echo "docs=$docs" | tee -a "$GITHUB_OUTPUT"
 
   # 22 is the floor `engines.node` declares; 24 is what Docker and the release job run. Testing
   # both is what keeps the floor honest — `>=20.12.0` was declared for a year and never exercised
@@ -424,6 +435,40 @@ jobs:
             -configuration Release \
             -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO | tail -5
 
+  # **The docs build, so a dead link blocks the PR that introduces it.** Until this job only Vercel
+  # built the docs, and its failure never reached a required check. VitePress's dead-link check fails
+  # the build on a link to a page that does not exist; it does not look at `#fragments`, which
+  # `scripts/__tests__/docsAnchors.test.mjs` covers inside `test` — on every PR, so it also covers
+  # the docs URLs compiled into `packages/`, which a PR can break without touching `docs/`.
+  #
+  # **Gated on `changes.outputs.docs`, and cheap when it runs.** Only the docs package is installed
+  # (`--filter`): the site depends on no workspace package, so nothing else needs building. Measured
+  # locally at ~4s for the install and ~8s for the build. `ci` accepts it as `skipped` only when the
+  # gate says `docs=false`, the same rule as `test-swift`.
+  docs:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    # A hung build would otherwise hold the required `ci` check for the default six hours.
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile --filter @tapflowio/docs
+
+      - run: pnpm docs:build
+
   # `protect-main` requires the status check named `ci`. A matrix reports per-leg contexts
   # (`test (22)`, `test (24)`) and never one called `ci`, so the matrix lives in `test` and this
   # job carries the required name. Changing the matrix stays a code change — the ruleset, which
@@ -434,7 +479,7 @@ jobs:
   # exactly how the `changeset` job below exempts bot PRs. Without the assertion it has no step
   # that can fail, so it always succeeds. Either omission makes the gate decorative.
   ci:
-    needs: [changes, test, test-relay-windows, test-swift]
+    needs: [changes, test, test-relay-windows, test-swift, docs]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -460,6 +505,7 @@ jobs:
           echo "test result:     ${{ needs.test.result }}"
           echo "test-relay-windows result: ${{ needs['test-relay-windows'].result }}"
           echo "test-swift result: ${{ needs['test-swift'].result }}"
+          echo "docs result:       ${{ needs.docs.result }} (docs=${{ needs.changes.outputs.docs }})"
           [ "${{ needs.changes.result }}" = "success" ]
           [ "${{ needs.test.result }}" = "success" ]
           [ "${{ needs['test-relay-windows'].result }}" = "success" ]
@@ -472,6 +518,11 @@ jobs:
           if [ "${{ needs['test-swift'].result }}" != "success" ]; then
             [ "${{ needs['test-swift'].result }}" = "skipped" ]
             [ "${{ needs.changes.outputs.netfilter }}" = "false" ]
+          fi
+          # The docs build, by the same rule: skipped only on the gate's own say-so.
+          if [ "${{ needs.docs.result }}" != "success" ]; then
+            [ "${{ needs.docs.result }}" = "skipped" ]
+            [ "${{ needs.changes.outputs.docs }}" = "false" ]
           fi
 
   changeset:

@@ -77,7 +77,7 @@ docker compose up -d
 없습니다. `TAPFLOW_ADMIN_EMAIL`과 `TAPFLOW_ADMIN_PASSWORD`를 설정하면 릴레이가 시작하면서
 계정을 만듭니다. 두 변수는 함께 설정해야 합니다. 비밀번호는 8자 이상이고 이미 소유자가 있는 설치에서는
 아무 일도 하지 않습니다. 어느 `.env` 파일을 읽는지까지 자세한 내용은
-[설정](/ko/reference/configuration#docker-컨테이너에서-첫-관리자-계정-만들기-tapflow-admin-email)에
+[설정](/ko/reference/configuration#create-the-first-admin-account-in-a-docker-container-tapflow-admin-email)에
 있습니다.
 :::
 

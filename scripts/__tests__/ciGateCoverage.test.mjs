@@ -81,6 +81,19 @@ describe('every CI job is behind the required `ci` aggregate', () => {
     expect(block, 'the gate job is not required to have succeeded').toMatch(/needs\.changes\.result.*=.*success/)
   })
 
+  it('`ci` accepts a skipped `docs` only on the gate\'s own say-so', () => {
+    // The same three-part rule as `test-swift` above, for the second path-gated job. Measured before
+    // this case existed: deleting the whole docs conditional from `ci` left this file green, because
+    // `needs` coverage is all the cases above check for any job but `test-swift`.
+    const block = CI.slice(CI.indexOf('\n  ci:'))
+    expect(block, 'the success case is no longer asserted').toMatch(/needs\.docs\.result.*!=.*"success"/)
+    expect(block, 'any non-success is tolerated, not only a skip').toMatch(/needs\.docs\.result.*=\s*"skipped"/)
+    expect(block, 'a skip is accepted without the gate explaining it').toMatch(/needs\.changes\.outputs\.docs.*=.*"false"/)
+    const job = CI.slice(CI.indexOf('\n  docs:'), CI.indexOf('\n  ci:'))
+    expect(job, '`docs` is not gated on the output `ci` reads').toMatch(/^ {4}if: needs\.changes\.outputs\.docs == 'true'$/m)
+    expect(job, '`docs` no longer builds the docs').toMatch(/run: pnpm docs:build/)
+  })
+
   it('no job or step opts out of failing', () => {
     // `continue-on-error` is the one hole that survives the aggregate: the leg reports success and
     // the rollup believes it. It is why the `alls-green` action exists.

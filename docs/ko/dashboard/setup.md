@@ -22,7 +22,7 @@ tapflow는 기본 인증 정보가 없습니다. 최초 실행 시 대시보드�
 :::
 
 ::: tip 브라우저 없는 서버 환경이라면?
-브라우저를 사용할 수 없는 경우 `tapflow admin init`으로 CLI에서 최초 관리자 계정을 생성할 수 있습니다. 릴레이가 먼저 구동 중이어야 합니다. 이 명령은 이메일과 비밀번호를 물어보기 때문에 터미널에서 직접 실행해야 하며 CI나 프로비저닝 스크립트에서는 실패합니다. 사람이 입력할 수 없는 설치라면 `TAPFLOW_ADMIN_EMAIL`과 `TAPFLOW_ADMIN_PASSWORD`를 설정해 릴레이가 시작하면서 계정을 만들게 하세요. 자세한 내용은 [설정](/ko/reference/configuration#docker-컨테이너에서-첫-관리자-계정-만들기-tapflow-admin-email)을 참고하세요.
+브라우저를 사용할 수 없는 경우 `tapflow admin init`으로 CLI에서 최초 관리자 계정을 생성할 수 있습니다. 릴레이가 먼저 구동 중이어야 합니다. 이 명령은 이메일과 비밀번호를 물어보기 때문에 터미널에서 직접 실행해야 하며 CI나 프로비저닝 스크립트에서는 실패합니다. 사람이 입력할 수 없는 설치라면 `TAPFLOW_ADMIN_EMAIL`과 `TAPFLOW_ADMIN_PASSWORD`를 설정해 릴레이가 시작하면서 계정을 만들게 하세요. 자세한 내용은 [설정](/ko/reference/configuration#create-the-first-admin-account-in-a-docker-container-tapflow-admin-email)을 참고하세요.
 :::
 
 ## 2. 로그인
