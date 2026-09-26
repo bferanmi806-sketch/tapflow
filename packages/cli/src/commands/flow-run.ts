@@ -51,7 +51,7 @@ async function resolveSession(client: RelayClient, opts: FlowRunOptions): Promis
       envFail(`device "${opts.device}" not found (available: ${devices.map((d) => d.name).join(', ')})`)
     }
     // The same device name can exist on two agents (two Macs) — never pick one silently.
-    if (candidates.length > 1) envFail(`multiple devices named "${opts.device}" — narrow with --session <id> (tapflow status)`)
+    if (candidates.length > 1) envFail(`multiple devices named "${opts.device}" — narrow with --session <id> (the MCP server's list_devices shows each device's session id)`)
   } else {
     const booted = devices.filter((d) => d.status === 'booted')
     if (booted.length === 1) {

@@ -10,8 +10,9 @@
 // Two subjects, and they are checked differently on purpose:
 //
 //  - **The build hook** (`docs/.vitepress/agent-artifacts.mjs`) is run for real, against a temporary
-//    directory. Nothing in CI builds the docs — `.github/workflows/` has no `docs:build`, Vercel is
-//    what builds them — so a check that asserted on the config literal instead would be asserting
+//    directory. When this was written nothing in CI built the docs; the `docs` job in `ci.yml` now
+//    does, but only on a PR that touches them, and a successful build says nothing about what the
+//    hook wrote — so a check that asserted on the config literal instead would still be asserting
 //    that we wrote a setting down, which is not the claim. Running the hook is also what makes the
 //    `srcExclude` half real: the hook copies `siteConfig.pages`, so a page VitePress excluded is one
 //    the hook never sees.
@@ -31,9 +32,9 @@
 //
 // **What this suite does NOT verify**: that VitePress actually applies `srcExclude` to
 // `siteConfig.pages`. `PAGES` below is a hand-written list with `AGENTS.md` removed by the test,
-// so it models that behaviour rather than checking it. Confirming it needs a real `pnpm docs:build`,
-// which no CI job runs; it was checked by hand on 2026-09-18 — `dist` held no `AGENTS.html`, and
-// the sitemap dropped from 58 entries to 56.
+// so it models that behaviour rather than checking it. Confirming it needs a real `pnpm docs:build`
+// and a look at its output, which the `docs` CI job runs but does not inspect; it was checked by
+// hand on 2026-09-18 — `dist` held no `AGENTS.html`, and the sitemap dropped from 58 entries to 56.
 //
 // Mutations run by hand, per rule 1 — every claim this header makes was made to fail:
 //

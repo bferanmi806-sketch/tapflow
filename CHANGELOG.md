@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`tapflow flow run --session` points at where a session id can be found.** Its help and the error for a `--device` name matching more than one device said to look in `tapflow status`, which prints no session ids. Both now name the MCP server's `list_devices`.
+
 - **`POST /api/v1/comments` accepts a PAT with the `builds:write` scope.** The CI step in the Build Distribution guide that posts branch and commit info as a comment got a 401, because the route accepted only the dashboard cookie, and failed the job under `curl -sf`. It now works with the same token that uploaded the build; a token without `builds:write` gets a 403.
 
 - **A comment the database refuses no longer takes the relay down.** `POST /api/v1/comments` with an unknown `build_id`, or from a browser whose user an Admin had removed, failed a foreign-key check where nothing caught it, and a relay started with the `tapflow` CLI exited. An unknown build now answers 404, anything else 500.
