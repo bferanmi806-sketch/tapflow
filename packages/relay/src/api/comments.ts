@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import busboy from 'busboy'
 import { getDb } from '../db.js'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, requireBuildAuth } from '../middleware/auth.js'
 import { json } from '../router.js'
 import { unlinkSafe } from '../lib/uploads.js'
 
@@ -62,7 +62,9 @@ export function handleCreateComment(
   res: http.ServerResponse,
   uploadsDir: string
 ): void {
-  const auth = requireAuth(req, res)
+  // Build auth, not cookie-only: CI posts build metadata here with the same PAT it uploaded with
+  // (docs/guide/build-distribution.md), so a `builds:write` PAT has to be accepted.
+  const auth = requireBuildAuth(req, res)
   if (!auth) return
 
   const bb = busboy({ headers: req.headers, limits: { fileSize: maxCommentAttachmentBytes() } })
@@ -105,26 +107,41 @@ export function handleCreateComment(
     }
 
     const db = getDb()
-    const commentResult = db.prepare(
-      "INSERT INTO comments (build_id, author_id, body, created_at) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))"
-    ).run(fields.build_id, auth.userId, fields.body.trim())
-
-    const commentId = commentResult.lastInsertRowid as number
-
-    if (attachmentPath) {
-      const size = fs.statSync(attachmentPath).size
-      db.prepare(
-        'INSERT INTO comment_attachments (comment_id, file_path, mime, size) VALUES (?, ?, ?, ?)'
-      ).run(commentId, attachmentPath, attachmentMime, size)
+    // Checked here rather than left to the FK, so an unknown build gets a 404 rather than the 500 below.
+    if (!db.prepare('SELECT 1 FROM builds WHERE id = ?').get(fields.build_id)) {
+      if (attachmentPath) unlinkSafe(attachmentPath, 'rejected attachment')
+      return json(res, 404, { error: 'Build not found' })
     }
 
-    const comment = db.prepare(`
-      SELECT c.id, c.body, c.created_at, u.display_name as author
-      FROM comments c JOIN users u ON u.id = c.author_id
-      WHERE c.id = ?
-    `).get(commentId)
+    // This listener is async, so anything thrown in it is an unhandled rejection, and the CLI exits the
+    // relay on one. It can throw: author_id is a FK too, and a member an Admin removed keeps a valid
+    // cookie until it expires. One transaction, so a failed attachment row leaves no comment behind.
+    try {
+      const commentId = db.transaction(() => {
+        const id = db.prepare(
+          "INSERT INTO comments (build_id, author_id, body, created_at) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))"
+        ).run(fields.build_id, auth.userId, fields.body.trim()).lastInsertRowid as number
+        if (attachmentPath) {
+          const size = fs.statSync(attachmentPath).size
+          db.prepare(
+            'INSERT INTO comment_attachments (comment_id, file_path, mime, size) VALUES (?, ?, ?, ?)'
+          ).run(id, attachmentPath, attachmentMime, size)
+        }
+        return id
+      })()
 
-    json(res, 201, comment)
+      const comment = db.prepare(`
+        SELECT c.id, c.body, c.created_at,
+               COALESCE(u.display_name, substr(u.email, 1, instr(u.email, '@') - 1)) as author
+        FROM comments c JOIN users u ON u.id = c.author_id
+        WHERE c.id = ?
+      `).get(commentId)
+
+      json(res, 201, comment)
+    } catch {
+      if (attachmentPath) unlinkSafe(attachmentPath, 'failed comment attachment')
+      if (!res.headersSent) json(res, 500, { error: 'Could not save the comment' })
+    }
   })
 
   bb.on('error', () => json(res, 500, { error: 'Upload failed' }))
