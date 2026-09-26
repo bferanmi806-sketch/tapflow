@@ -51,7 +51,7 @@ Changes to `tapflow.config.json` take effect after a relay restart.
 
 ### Register via the REST API
 
-To add one at runtime, use `POST /api/v1/webhooks`. Authentication is the same as build upload — a Personal Access Token with the `builds:write` scope. See [Build Distribution](/guide/build-distribution) for token generation.
+To add one at runtime, use `POST /api/v1/webhooks`. Authentication is the same as build upload — a personal access token (PAT) with the `builds:write` scope. See [Build Distribution](/guide/build-distribution) for token generation.
 
 ```sh
 curl -X POST https://your-relay/api/v1/webhooks \

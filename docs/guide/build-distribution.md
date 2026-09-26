@@ -32,7 +32,7 @@ tapflow works on the built artifact, not the build tool. A native Xcode or Gradl
 | Requirement | Notes |
 |-------------|-------|
 | tapflow relay | Running and reachable from your CI environment |
-| Personal Access Token | Create an API-type token in **Settings → Tokens** (it carries `builds:write`). Only Admins see this page |
+| Personal access token (PAT) | Create an API-type token in **Settings → Tokens** (it carries `builds:write`). Only Admins see this page |
 
 ## How CI reaches the relay {#how-ci-reaches-the-relay}
 

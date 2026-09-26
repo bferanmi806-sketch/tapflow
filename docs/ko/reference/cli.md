@@ -34,7 +34,7 @@ tapflow doctor ios
 tapflow doctor android
 ```
 
-검사 항목은 다음과 같습니다(디바이스/AVD는 *존재*하기만 하면 됩니다. 부팅은 릴레이가 필요할 때 처리합니다).
+검사 항목은 다음과 같습니다(기기/AVD는 *존재*하기만 하면 됩니다. 부팅은 릴레이가 필요할 때 처리합니다).
 
 - **Common**: Node.js 버전, 포트 4000 사용 가능 여부. 이 Mac에서 릴레이가 4000 포트로 실행 중이면 이 항목이 실패합니다.
 - **iOS** (macOS만): Xcode, `xcrun simctl`, 사용 가능한 시뮬레이터, 네트워크 필터, 네트워크 훅, 네트워크 훅 심볼, Lean mode
@@ -77,7 +77,7 @@ macOS에서 `setup ios`는 iOS 네트워크 제어에 필요한 네트워크 필
 
 설치 마지막에 필터가 돌기 시작했는지를 최대 30초까지 기다리므로 그 단계에서 멈춘 것처럼 보일 수 있습니다. 아무것도 보고하지 않으면 완료로 표시하지 않고 그렇게 말합니다. 자세한 것은 [`migrate net-filter`의 같은 동작](#tapflow-migrate-net-filter)을 보세요.
 
-setup은 부팅 가능한 디바이스/AVD를 준비하는 데까지만 하며 실제 부팅은 세션 접속 시 릴레이가 처리합니다. `ANDROID_HOME`/PATH를 등록한 뒤에는 새 터미널을 열거나 `exec $SHELL`을 실행하고 `tapflow doctor`를 돌리세요.
+setup은 부팅 가능한 기기/AVD를 준비하는 데까지만 하며 실제 부팅은 세션 접속 시 릴레이가 처리합니다. `ANDROID_HOME`/PATH를 등록한 뒤에는 새 터미널을 열거나 `exec $SHELL`을 실행하고 `tapflow doctor`를 돌리세요.
 
 | 옵션 | 설명 |
 |------|------|
@@ -88,7 +88,7 @@ setup은 부팅 가능한 디바이스/AVD를 준비하는 데까지만 하며 �
 
 ## `tapflow init`
 
-이 머신의 tapflow를 설정합니다. `tapflow.config.json`, 코딩 에이전트가 읽는 `AGENTS.md`와 `CLAUDE.md`, 그리고 DNS 자동 발급을 선택하면 자격 증명 `.env`까지 만듭니다. 어느 디렉토리에서 실행해도 됩니다. 설치 디렉토리에 쓰고, 기본값은 `~/.tapflow`이며 `TAPFLOW_HOME`이나 현재 디렉토리의 기존 설치가 있으면 그쪽입니다([명령이 쓰는 설치 디렉토리](/ko/guide/configure#명령이-쓰는-설치-디렉토리)). 디렉토리가 없으면 만듭니다.
+이 머신의 tapflow를 설정합니다. `tapflow.config.json`, 코딩 에이전트가 읽는 `AGENTS.md`와 `CLAUDE.md`, 그리고 DNS 자동 발급을 선택하면 자격 증명 `.env`까지 만듭니다. 어느 디렉터리에서 실행해도 됩니다. 설치 디렉터리에 쓰고, 기본값은 `~/.tapflow`이며 `TAPFLOW_HOME`이나 현재 디렉터리의 기존 설치가 있으면 그쪽입니다([명령이 쓰는 설치 디렉터리](/ko/guide/configure#명령이-쓰는-설치-디렉토리)). 디렉터리가 없으면 만듭니다.
 
 다시 실행하면 설정은 그대로 두고 `AGENTS.md`의 tapflow 섹션만 갱신하므로, 기존 설치도 이 문서를 받을 수 있습니다. 설정을 새로 만들려면 `--force`를 씁니다. 이미 설정이 있는데 `--tunnel`을 주면 오류로 멈춥니다. 설정을 유지하면 그 플래그를 무시하게 되기 때문입니다.
 
@@ -123,7 +123,7 @@ tapflow init
 # → Next: tapflow start
 ```
 
-다른 디렉토리에 설치를 만들 때:
+다른 디렉터리에 설치를 만들 때:
 
 ```sh
 TAPFLOW_HOME=/var/lib/tapflow tapflow init
@@ -211,7 +211,7 @@ tapflow가 Tailscale MagicDNS 호스트명을 자동으로 읽어 URL을 구성�
 
 **VPS + rathole**
 
-`TAPFLOW_TUNNEL_TOKEN`을 데이터 디렉토리의 `.env`(기본값 `~/.tapflow/data/.env`)에 적은 뒤 실행합니다:
+`TAPFLOW_TUNNEL_TOKEN`을 데이터 디렉터리의 `.env`(기본값 `~/.tapflow/data/.env`)에 적은 뒤 실행합니다:
 
 ```sh
 tapflow relay start
@@ -297,7 +297,7 @@ tapflow reset
 
 ## `tapflow status`
 
-연결된 에이전트, 디바이스, 활성 세션을 표시합니다.
+연결된 에이전트, 기기, 활성 세션을 표시합니다.
 
 ```sh
 tapflow status
@@ -346,13 +346,13 @@ tapflow flow run .tapflow/flows/login-smoke.yaml
 | 옵션 | 기본값 | 설명 |
 |------|--------|------|
 | `--relay <url>` | `ws://localhost:4000` | 릴레이 WebSocket URL. `relay.url` 설정을 읽지 않습니다. |
-| `--token <token>` | `TAPFLOW_TOKEN` 환경변수 | 원격 릴레이에 접속할 PAT |
+| `--token <token>` | `TAPFLOW_TOKEN` 환경변수 | 원격 릴레이에 접속할 개인 액세스 토큰(PAT) |
 | `--session <id>` | — | 대상 세션 ID |
 | `--device <name>` | — | 대상 기기 이름. 꺼져 있으면 부팅합니다. |
 | `--build <id>` | — | 테스트할 빌드 ID. 실행 전에 설치하고 `launchApp` 스텝이 이 빌드를 실행합니다. |
 | `--no-install` | — | `--build`를 설치하지 않고 실행 |
 | `--junit <path>` | — | JUnit XML 리포트를 쓸 경로 |
-| `--artifacts <dir>` | `.tapflow/artifacts` | 실패 스크린샷을 저장할 디렉토리 |
+| `--artifacts <dir>` | `.tapflow/artifacts` | 실패 스크린샷을 저장할 디렉터리 |
 | `--timeout <seconds>` | `10` | 셀렉터마다 기다리는 기본 시간(초) |
 
 `--session`과 `--device`를 모두 생략하면 부팅된 기기가 정확히 하나일 때 그 기기를 씁니다. 부팅된 기기가 없거나 여러 대면 환경 오류로 멈춥니다.

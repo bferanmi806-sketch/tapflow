@@ -65,7 +65,7 @@ docker compose up -d
       - TAPFLOW_RELAY_URL=http://<docker-box-ip>:4000
 ```
 
-설정 파일이 아니라 환경변수인 이유가 있습니다. 릴레이는 `tapflow.config.json`을 설치 디렉토리에서
+설정 파일이 아니라 환경변수인 이유가 있습니다. 릴레이는 `tapflow.config.json`을 설치 디렉터리에서
 읽고, 이미지에서는 `TAPFLOW_HOME`이 그 위치를 `/app`으로 고정합니다. Compose 볼륨이 마운트하는 것은
 `/app/.tapflow/data`이므로 거기 둔 파일은 열리지 않습니다. 이 값은 CORS·CSRF 허용 목록에도 함께 들어갑니다. 프록시 뒤에 두는 배포에는
 그쪽이 필요합니다.
@@ -123,7 +123,7 @@ tapflow agent start --relay ws://192.168.x.x:4000 --token tflw_pat_xxxxxxxx
 
 ### JWT_SECRET
 
-단일 릴레이라면 `JWT_SECRET`을 따로 설정하지 않아도 됩니다. 설정하지 않으면 릴레이가 최초 부팅 시 강력한 per-install 시크릿을 생성해 데이터 디렉토리(`jwt-secret`, 소유자 전용)에 저장합니다.
+단일 릴레이라면 `JWT_SECRET`을 따로 설정하지 않아도 됩니다. 설정하지 않으면 릴레이가 최초 부팅 시 강력한 per-install 시크릿을 생성해 데이터 디렉터리(`jwt-secret`, 소유자 전용)에 저장합니다.
 
 고정 키가 필요한 경우, 예를 들어 여러 릴레이 인스턴스가 하나의 시크릿을 공유해야 한다면 명시적으로 설정하세요. 안전한 랜덤 값을 생성합니다:
 
@@ -131,7 +131,7 @@ tapflow agent start --relay ws://192.168.x.x:4000 --token tflw_pat_xxxxxxxx
 openssl rand -hex 32
 ```
 
-생성된 값을 데이터 디렉토리의 `.env`(기본 설치에서는 `~/.tapflow/data/.env`)에 적으면 재시작할 때마다 다시 export하지 않아도 됩니다. 릴레이가 시작할 때 파일을 읽습니다:
+생성된 값을 데이터 디렉터리의 `.env`(기본 설치에서는 `~/.tapflow/data/.env`)에 적으면 재시작할 때마다 다시 export하지 않아도 됩니다. 릴레이가 시작할 때 파일을 읽습니다:
 
 ```ini
 JWT_SECRET=YOUR_JWT_SECRET
@@ -147,7 +147,7 @@ JWT_SECRET=YOUR_JWT_SECRET tapflow start
 
 ### tapflow.config.json
 
-릴레이는 이 머신의 설치 디렉토리에서 `tapflow.config.json`을 읽습니다. 기본값은 `~/.tapflow`이고 `TAPFLOW_HOME`으로 바꿉니다. 서버에서는 서비스 환경에 `TAPFLOW_HOME`을 설정하세요. 그래야 유닛과 셸, 직접 실행하는 `tapflow` 명령이 같은 설치를 가리킵니다. [설정 파일](/ko/reference/configuration)을 참고하세요.
+릴레이는 이 머신의 설치 디렉터리에서 `tapflow.config.json`을 읽습니다. 기본값은 `~/.tapflow`이고 `TAPFLOW_HOME`으로 바꿉니다. 서버에서는 서비스 환경에 `TAPFLOW_HOME`을 설정하세요. 그래야 유닛과 셸, 직접 실행하는 `tapflow` 명령이 같은 설치를 가리킵니다. [설정 파일](/ko/reference/configuration)을 참고하세요.
 
 ## 내부 접속 (같은 네트워크)
 
@@ -332,7 +332,7 @@ sudo systemctl reload caddy
 }
 ```
 
-터널 토큰을 데이터 디렉토리의 `.env`(기본 설치에서는 `~/.tapflow/data/.env`)에 적습니다:
+터널 토큰을 데이터 디렉터리의 `.env`(기본 설치에서는 `~/.tapflow/data/.env`)에 적습니다:
 
 ```ini
 TAPFLOW_TUNNEL_TOKEN=your-secret-token
@@ -366,11 +366,11 @@ fly.io, Railway 등 클라우드 서비스에 릴레이를 올리면 에이전�
 
 ## 백업
 
-릴레이의 영속 상태는 실제 사용되는 데이터 디렉토리 아래에 저장됩니다. 기본 설치는 `~/.tapflow/data/`이고, 이전 버전에서 자기 폴더에 만든 설치는 `<설치>/.tapflow/data/`입니다. `tapflow start`와 `tapflow relay start`가 시작할 때 그 경로를 출력하고, `TAPFLOW_DATA_DIR`가 `local.dataDir`를 덮어씁니다. OS 업그레이드, 릴레이 이전, 장기 팀 파일럿 전에는 이 디렉토리를 백업하세요.
+릴레이의 영속 상태는 실제 사용되는 데이터 디렉터리 아래에 저장됩니다. 기본 설치는 `~/.tapflow/data/`이고, 이전 버전에서 자기 폴더에 만든 설치는 `<설치>/.tapflow/data/`입니다. `tapflow start`와 `tapflow relay start`가 시작할 때 그 경로를 출력하고, `TAPFLOW_DATA_DIR`가 `local.dataDir`를 덮어씁니다. OS 업그레이드, 릴레이 이전, 장기 팀 파일럿 전에는 이 디렉터리를 백업하세요.
 
 `.tapflow-data/`에 상태를 저장하던 버전에서 올라와도 깨지지 않습니다. 지정된 `local.dataDir`은 그대로 존중되고, config 없는 설치는 기존 `.tapflow-data/`를 계속 읽습니다. 통합 레이아웃을 적용하려면 릴레이를 멈추고 `tapflow migrate data-dir`을 한 번 실행하세요. `.tapflow-data/`를 `.tapflow/data/`로 원자적 rename 하고(복사 없음, 데이터 유실 없음), `local.dataDir`이 구 기본값을 가리키면 다시 써주며, `.gitignore`도 갱신합니다.
 
-아래 경로는 모두 그 데이터 디렉토리 안에 있습니다. `tapflow start`가 출력하는 `Data →` 줄의 경로입니다.
+아래 경로는 모두 그 데이터 디렉터리 안에 있습니다. `tapflow start`가 출력하는 `Data →` 줄의 경로입니다.
 
 주요 경로:
 
@@ -380,7 +380,7 @@ fly.io, Railway 등 클라우드 서비스에 릴레이를 올리면 에이전�
 | `tapflow.db-wal` / `tapflow.db-shm` | SQLite WAL 보조 파일입니다. 파일시스템 스냅샷에 함께 포함하거나, Litestream을 사용해 변경분을 안전하게 캡처하세요. |
 | `uploads/` | 릴레이가 제공하는 업로드된 빌드 아티팩트입니다. |
 | `recordings/` | 릴레이를 통해 업로드된 세션 녹화 파일입니다. |
-| `.env`와 `jwt-secret` | 릴레이 시크릿입니다. 비공개로 보관하고 데이터 디렉토리와 함께 복원해야 기존 세션과 연동이 유지됩니다. |
+| `.env`와 `jwt-secret` | 릴레이 시크릿입니다. 비공개로 보관하고 데이터 디렉터리와 함께 복원해야 기존 세션과 연동이 유지됩니다. |
 
 ### 권장: SQLite에는 Litestream 사용
 
@@ -394,7 +394,7 @@ brew install litestream
 
 Linux에서는 공식 릴리스 페이지에서 아키텍처에 맞는 Litestream 릴리스 바이너리를 설치하세요.
 
-tapflow 설정 파일 옆에 `litestream.yml`을 만듭니다. 데이터베이스 경로는 절대 경로로 씁니다. 상대 경로는 Litestream 자신의 작업 디렉토리 기준이라 설치 디렉토리와 다를 수 있습니다:
+tapflow 설정 파일 옆에 `litestream.yml`을 만듭니다. 데이터베이스 경로는 절대 경로로 씁니다. 상대 경로는 Litestream 자신의 작업 디렉터리 기준이라 설치 디렉터리와 다를 수 있습니다:
 
 ```yaml
 dbs:
@@ -429,7 +429,7 @@ litestream restore -config litestream.yml -if-replica-exists "$DATA_DIR/tapflow.
 
 경로는 tapflow를 실행해서 출력을 보는 대신 위 규칙으로 정하세요. 처음 시작할 때 빈 `tapflow.db`가 만들어지고, `litestream restore`는 이미 있는 데이터베이스를 덮어쓰지 않습니다.
 
-그다음 같은 데이터 디렉토리 안의 `uploads/`, `recordings/`, `.env`, `jwt-secret`을 파일 백업에서 복원하세요. Litestream은 SQLite 데이터베이스만 보호합니다. 빌드 파일, 녹화 파일, 시크릿은 별도의 파일시스템 또는 오브젝트 스토리지 백업이 필요합니다.
+그다음 같은 데이터 디렉터리 안의 `uploads/`, `recordings/`, `.env`, `jwt-secret`을 파일 백업에서 복원하세요. Litestream은 SQLite 데이터베이스만 보호합니다. 빌드 파일, 녹화 파일, 시크릿은 별도의 파일시스템 또는 오브젝트 스토리지 백업이 필요합니다.
 
 ## PM2 (릴레이 Mac 상시 운영)
 
@@ -439,7 +439,7 @@ litestream restore -config litestream.yml -if-replica-exists "$DATA_DIR/tapflow.
 npm install -g pm2 tapflow
 ```
 
-`JWT_SECRET`을 데이터 디렉토리의 `.env`(기본 설치에서는 `~/.tapflow/data/.env`)에 넣어 두거나 비워 두고(비우면 자동 생성) 다음으로 시작합니다:
+`JWT_SECRET`을 데이터 디렉터리의 `.env`(기본 설치에서는 `~/.tapflow/data/.env`)에 넣어 두거나 비워 두고(비우면 자동 생성) 다음으로 시작합니다:
 
 ```sh
 pm2 start tapflow --name relay -- relay start
@@ -474,14 +474,14 @@ sudo mkdir -p /etc/tapflow /var/lib/tapflow/.tapflow/data
 sudo chown -R tapflow:tapflow /var/lib/tapflow
 ```
 
-릴레이 시크릿은 `/etc/tapflow/relay.env`에 둡니다. 기존 [JWT_SECRET](#jwt-secret) 섹션은 릴레이가 데이터 디렉토리에서 직접 읽는 `.env` 방식도 설명합니다:
+릴레이 시크릿은 `/etc/tapflow/relay.env`에 둡니다. 기존 [JWT_SECRET](#jwt-secret) 섹션은 릴레이가 데이터 디렉터리에서 직접 읽는 `.env` 방식도 설명합니다:
 
 ```ini
 TAPFLOW_DATA_DIR=/var/lib/tapflow/.tapflow/data
 JWT_SECRET=YOUR_JWT_SECRET
 ```
 
-`TAPFLOW_HOME`만 두면 데이터는 `/var/lib/tapflow/data`에 놓입니다. 그런데도 `TAPFLOW_DATA_DIR`을 함께 적는 이유는, 설치 디렉토리 개념이 생기기 전에 구축한 서버와 같은 경로를 쓰기 위해서입니다. 새로 만드는 서버에서 짧은 레이아웃을 쓰려면 이 줄을 빼고 위 `mkdir`의 `/var/lib/tapflow/.tapflow/data`도 `/var/lib/tapflow/data`로 바꾸세요. 비어 있더라도 `.tapflow/data` 폴더가 있으면 릴레이는 그 폴더를 기존 데이터로 보고 계속 사용합니다.
+`TAPFLOW_HOME`만 두면 데이터는 `/var/lib/tapflow/data`에 놓입니다. 그런데도 `TAPFLOW_DATA_DIR`을 함께 적는 이유는, 설치 디렉터리 개념이 생기기 전에 구축한 서버와 같은 경로를 쓰기 위해서입니다. 새로 만드는 서버에서 짧은 레이아웃을 쓰려면 이 줄을 빼고 위 `mkdir`의 `/var/lib/tapflow/.tapflow/data`도 `/var/lib/tapflow/data`로 바꾸세요. 비어 있더라도 `.tapflow/data` 폴더가 있으면 릴레이는 그 폴더를 기존 데이터로 보고 계속 사용합니다.
 
 `JWT_SECRET`은 `openssl rand -hex 32`로 생성하고, `/etc/tapflow/relay.env`는 root만 읽을 수 있게 제한합니다:
 
@@ -530,7 +530,7 @@ WantedBy=multi-user.target
 `tapflow` 사용자의 홈을 `/home`이 아니라 `/var/lib/tapflow`로 만든 것도
 같은 이유입니다.
 
-기본값이 아닌 포트나 다른 설정이 필요하다면 `tapflow.config.json`을 `/var/lib/tapflow`에 둡니다. 위의 `TAPFLOW_HOME`이 그 디렉토리를 설치 디렉토리로 만듭니다. 직접 `tapflow` 명령을 실행할 때도 같은 변수를 셸에 설정하세요. 그러지 않으면 서비스가 아니라 홈 디렉토리의 기본 설치를 읽습니다.
+기본값이 아닌 포트나 다른 설정이 필요하다면 `tapflow.config.json`을 `/var/lib/tapflow`에 둡니다. 위의 `TAPFLOW_HOME`이 그 디렉터리를 설치 디렉터리로 만듭니다. 직접 `tapflow` 명령을 실행할 때도 같은 변수를 셸에 설정하세요. 그러지 않으면 서비스가 아니라 홈 디렉터리의 기본 설치를 읽습니다.
 
 서비스를 활성화하기 전에 스모크 테스트를 먼저 실행하세요. 문제가 5초마다
 재시작하는 유닛이 아니라 읽을 수 있는 메시지로 드러납니다. `systemd-run`은

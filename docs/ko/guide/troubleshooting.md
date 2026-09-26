@@ -13,7 +13,7 @@
 ### 에이전트가 릴레이에 연결되지 않음
 
 1. 릴레이가 실행 중인지 확인합니다.
-2. `--relay` 옵션의 URL 스킴을 확인합니다. 릴레이가 평문 HTTP면 `ws://`, 릴레이에 `tls`가 설정되어 HTTPS로 동작하면 `wss://`여야 합니다. `tapflow relay start`가 출력하는 에이전트 연결 명령(이 Mac에서 에이전트를 띄우지 않을 때는 `tapflow start`도 출력)과 Agent 토큰 다이얼로그의 명령에는 맞는 스킴이 들어 있습니다.
+2. `--relay` 옵션의 URL 스킴을 확인합니다. 릴레이가 평문 HTTP면 `ws://`, 릴레이에 `tls`가 설정되어 HTTPS로 동작하면 `wss://`여야 합니다. `tapflow relay start`가 출력하는 에이전트 연결 명령(이 Mac에서 에이전트를 띄우지 않을 때는 `tapflow start`도 출력)과 **Agent** 토큰 다이얼로그의 명령에는 맞는 스킴이 들어 있습니다.
 3. `tapflow doctor`를 실행해 환경을 점검합니다. 같은 Mac에서 릴레이가 실행 중이면 릴레이가 포트를 쓰고 있어서 `Port 4000` 항목이 실패로 나옵니다. 이 항목은 무시해도 됩니다.
 
 ## 빌드를 열면 `spawn unknown error`가 납니다 {#spawn-unknown-error}
@@ -58,13 +58,13 @@ Xcode 업데이트 시 새 버전의 `CoreSimulator.framework`가 설치되지�
 
 ## iOS 시뮬레이터가 부팅되지 않음 — "cannot be located on disk" {#simulator-data-missing}
 
-Xcode나 macOS 업데이트가 오래된 런타임을 정리하면, 시뮬레이터가 목록에는 남아 있지만 디스크의 데이터 디렉토리는 사라진 상태가 될 수 있습니다. `simctl list`에는 여전히 사용 가능으로 표시되지만 부팅은 실패합니다:
+Xcode나 macOS 업데이트가 오래된 런타임을 정리하면, 시뮬레이터가 목록에는 남아 있지만 디스크의 데이터 디렉터리는 사라진 상태가 될 수 있습니다. `simctl list`에는 여전히 사용 가능으로 표시되지만 부팅은 실패합니다:
 
 > Unable to boot device because it cannot be located on disk. The device's data is no longer present …
 
-tapflow는 이 상황을 자동으로 복구합니다. 대시보드에서 해당 디바이스를 열면 에이전트가 깨진 시뮬레이터를 erase해 데이터를 다시 생성한 뒤 부팅을 한 번 재시도합니다. 정상 시뮬레이터는 절대 erase하지 않습니다.
+tapflow는 이 상황을 자동으로 복구합니다. 대시보드에서 해당 기기를 열면 에이전트가 깨진 시뮬레이터를 erase해 데이터를 다시 생성한 뒤 부팅을 한 번 재시도합니다. 정상 시뮬레이터는 절대 erase하지 않습니다.
 
-자동 복구로 해결되지 않으면 남아 있는 디바이스를 직접 정리하세요. 아래 명령은 런타임이 사라진 시뮬레이터를 삭제합니다:
+자동 복구로 해결되지 않으면 남아 있는 기기를 직접 정리하세요. 아래 명령은 런타임이 사라진 시뮬레이터를 삭제합니다:
 
 ```sh
 xcrun simctl delete unavailable
@@ -98,7 +98,7 @@ Xcode → Settings → Platforms에서 iOS 18+ 런타임을 설치합니다.
 |------|-----------|
 | `.ipa` 파일 업로드 | `.ipa`는 실제 기기용입니다. `xcodebuild -sdk iphonesimulator`로 빌드 후 `.app` 폴더를 zip으로 압축하세요 |
 | `.app`이 ZIP 루트에 없음 | 압축 해제 시 `MyApp.app`이 바로 나와야 합니다. 상위 폴더로 감싸면 파싱에 실패합니다 |
-| 디바이스용 슬라이스만 포함 | 시뮬레이터용 빌드인지 확인합니다. `lipo -info MyApp.app/MyApp` 출력에 `x86_64` 또는 `arm64`(시뮬레이터)가 있어야 합니다 |
+| 기기용 슬라이스만 포함 | 시뮬레이터용 빌드인지 확인합니다. `lipo -info MyApp.app/MyApp` 출력에 `x86_64` 또는 `arm64`(시뮬레이터)가 있어야 합니다 |
 
 ## Android 에뮬레이터 문제
 
@@ -417,7 +417,7 @@ AWDL은 트리거(AirDrop 검색·AirPlay 수신·Handoff·Bluetooth 근접)가 
 
 - 대시보드 **Mac Resources** 탭에서 해당 Mac의 CPU·RAM 사용량을 확인합니다.
 - 릴레이와 에이전트를 **다른 Mac으로 분리**해 자원 경쟁을 없앱니다(에이전트 확장에도 유리합니다).
-- 한 Mac에서 동시에 실행하는 디바이스 수를 줄입니다.
+- 한 Mac에서 동시에 실행하는 기기 수를 줄입니다.
 
 ### 디스플레이 절전
 
@@ -435,7 +435,7 @@ AWDL은 트리거(AirDrop 검색·AirPlay 수신·Handoff·Bluetooth 근접)가 
 
 ### 릴레이가 예상과 다른 설정이나 DB를 씁니다
 
-`tapflow start`와 `tapflow relay start`는 시작할 때 설치 디렉토리, 설정 파일, 데이터 디렉토리를 출력합니다. 명령은 `TAPFLOW_HOME`, 그다음 현재 디렉토리가 이미 설치인 경우, 마지막으로 `~/.tapflow` 순으로 찾습니다([명령이 쓰는 설치 디렉토리](/ko/guide/configure#명령이-쓰는-설치-디렉토리)). 예전 설치가 있는 디렉토리에서 실행하면 그 설치를 쓰게 되므로, 분명히 하려면 `TAPFLOW_HOME`을 설정하세요.
+`tapflow start`와 `tapflow relay start`는 시작할 때 설치 디렉터리, 설정 파일, 데이터 디렉터리를 출력합니다. 명령은 `TAPFLOW_HOME`, 그다음 현재 디렉터리가 이미 설치인 경우, 마지막으로 `~/.tapflow` 순으로 찾습니다([명령이 쓰는 설치 디렉터리](/ko/guide/configure#명령이-쓰는-설치-디렉토리)). 예전 설치가 있는 디렉터리에서 실행하면 그 설치를 쓰게 되므로, 분명히 하려면 `TAPFLOW_HOME`을 설정하세요.
 
 ### `tapflow admin init` 실패 (`Already initialized`)
 

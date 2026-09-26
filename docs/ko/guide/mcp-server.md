@@ -6,14 +6,14 @@ tapflow의 **AI 자동화 축**인 MCP 서버와 플로우 러너는 실험적 �
 
 `@tapflowio/mcp-server`는 tapflow를 [Model Context Protocol(MCP)](https://modelcontextprotocol.io) 서버로 노출합니다. Claude Code, Codex 등 MCP를 지원하는 LLM 에이전트가 iOS 시뮬레이터와 Android 에뮬레이터를 네이티브 도구로 직접 제어할 수 있습니다. 스크립팅도, 좌표 하드코딩도 필요 없습니다.
 
-세 문서는 이렇게 이어집니다. 여기서 에이전트를 연결하고, [플로우 레퍼런스](/ko/guide/writing-flows)에서 플로우 YAML 형식을 익힌 뒤, [CI/CD에서 MCP 활용](/ko/guide/mcp-ci)에서 둘을 합칩니다. 에이전트가 플로우를 한 번 작성하면 이후 CI가 그 플로우를 결정적으로 재생합니다.
+세 문서는 이렇게 이어집니다. 여기서 코딩 에이전트를 연결하고, [플로우 레퍼런스](/ko/guide/writing-flows)에서 플로우 YAML 형식을 익힌 뒤, [CI/CD에서 MCP 활용](/ko/guide/mcp-ci)에서 둘을 합칩니다. 에이전트가 플로우를 한 번 작성하면 이후 CI가 그 플로우를 결정적으로 재생합니다.
 
 ## 이럴 때 쓰세요
 
 **반복적인 자동화 테스트**에서 진가를 발휘합니다. 단발성 수동 확인은 여전히 직접 하는 게 빠릅니다.
 
 - **CI/CD 회귀 테스트** — 빌드마다 에이전트가 시뮬레이터를 부팅하고, 빌드를 설치하고, 주요 플로우를 순회하고, 스크린샷을 캡처해 회귀를 감지합니다. 사람이 개입할 필요가 없습니다. → [CI/CD에서 MCP 활용하기](/ko/guide/mcp-ci)
-- **다중 디바이스 매트릭스** — iPhone SE (iOS 16), iPhone 15 Pro (iOS 17), Android 에뮬레이터를 직접 전환하지 않고 동일한 플로우를 순차 실행할 수 있습니다.
+- **다중 기기 매트릭스** — iPhone SE (iOS 16), iPhone 15 Pro (iOS 17), Android 에뮬레이터를 직접 전환하지 않고 동일한 플로우를 순차 실행할 수 있습니다.
 - **자연어 QA 스크립트** — 개발자가 아닌 QA·PM도 테스트 시나리오를 평문으로 작성하면 에이전트가 실행합니다. 셀렉터나 좌표 매핑이 불필요합니다.
 
 ## 연결 구조
@@ -28,12 +28,12 @@ tapflow relay
 Mac 에이전트 (iOS · Android)
 ```
 
-MCP 서버는 LLM 에이전트와 자체 호스팅 relay를 연결하는 로컬 프로세스입니다. 앱 데이터는 네트워크 밖으로 나가지 않습니다.
+MCP 서버는 LLM 에이전트와 자체 호스팅 릴레이를 연결하는 로컬 프로세스입니다. 앱 데이터는 네트워크 밖으로 나가지 않습니다.
 
 ## 사전 조건
 
-- tapflow relay가 실행 중이어야 합니다.
-- 대시보드에서 **Personal Access Token(PAT)** 을 발급받아야 합니다.
+- tapflow 릴레이가 실행 중이어야 합니다.
+- 대시보드에서 **개인 액세스 토큰(PAT)** 을 발급받아야 합니다.
   **Settings → Tokens → New token**에서 Type을 **API**로 선택합니다. Tokens 메뉴는 Admin에게만 보입니다.
 
 ## 설치
@@ -89,7 +89,7 @@ MCP를 지원하는 클라이언트라면 모두 tapflow를 사용할 수 있습
 | 변수 | 설명 | 기본값 |
 |------|------|--------|
 | `TAPFLOW_RELAY_URL` | 릴레이 WebSocket URL | `ws://localhost:4000` |
-| `TAPFLOW_TOKEN` | Personal Access Token | (필수) |
+| `TAPFLOW_TOKEN` | PAT | (필수) |
 
 ## 사용 가능한 도구
 
