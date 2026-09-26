@@ -16,7 +16,7 @@ That disables audio capture on both platforms; the video path is unchanged eithe
 
 ## Requirements
 
-- **iOS** — macOS 14.2+ on the agent Mac (Core Audio process taps). Below that, iOS audio is unavailable; video is unaffected.
+- **iOS** — macOS 14.2+ on the agent Mac (Core Audio process taps). The iOS agent requires macOS 26 or later ([System Requirements](/guide/requirements)), so a supported host always meets this.
 - **Android** — captured through the emulator's stream; no extra requirement.
 
 ## Permission (one-time)

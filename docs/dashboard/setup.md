@@ -21,8 +21,8 @@ The first account can only be created on the relay Mac. Opened from another mach
 The setup page only appears when no accounts exist. After this step, use **Settings → Team** to invite additional users.
 :::
 
-::: tip Headless server or CI?
-If a browser is not available, use `tapflow admin init` to create the first admin account via CLI. The relay must be running first.
+::: tip Headless server?
+If a browser is not available, use `tapflow admin init` to create the first admin account via CLI. The relay must be running first. The command asks for an email and a password, so run it from a terminal: it fails in CI or a provisioning script. For an install nobody can type into, set `TAPFLOW_ADMIN_EMAIL` and `TAPFLOW_ADMIN_PASSWORD` and the relay creates the account as it starts. See [Configuration](/reference/configuration#create-the-first-admin-account-in-a-docker-container-tapflow-admin-email).
 :::
 
 ## 2. Sign in
@@ -31,27 +31,28 @@ Open `http://localhost:4000` (or your relay URL) in any browser. Sign in with th
 
 ## 3. Invite your team
 
-Once signed in as Admin, go to **Settings → Team** and send invitations:
+Once signed in as Admin, go to **Settings → Team** and create invite links:
 
 1. Click **Invite member**.
 2. Enter the team member's email and select a role:
-   - **Admin** — full access, can invite and remove members.
-   - **Developer** — can upload builds and manage apps.
-   - **QA** — can start sessions and leave comments.
-   - **Viewer** — read-only access to builds and recordings.
-3. Click **Send invite**. The member receives an email with a link to set their password.
+   - **Admin** — can do everything except remove their own account. Inviting members, changing roles, removing members, resetting passwords, workspace settings and the **Settings → Tokens** page are Admin-only.
+   - **Developer** — can add, edit and delete apps.
+   - **QA**, **Viewer** — can do the shared actions below. The server does not currently tell these two roles apart.
+
+   Uploading builds, changing a build's status, commenting and starting sessions are open to every signed-in member, whatever their role. Viewer is not read-only.
+3. Click **Generate invite link**. The link appears in the dialog, and is also copied to your clipboard when the browser allows it. If SMTP is configured, the member also receives an invite email with a link to set their password.
 
 ::: tip No email server yet?
-If SMTP isn't configured, copy the invite link from the response and share it directly. See [Configuration](/reference/configuration) to set up SMTP.
+If SMTP isn't configured, copy the link shown in the invite dialog and share it directly. See [Configuration](/reference/configuration) to set up SMTP.
 :::
 
 ## 4. Add your first app
 
 Go to **App Center**. There are two ways to add an app:
 
-**Option A — Upload a build**: Click **Upload Build** and select your file. tapflow reads the bundle ID, version, and build number automatically and creates the App entry.
+**Option A — Upload a build**: Click **Upload build** and select your file. tapflow reads the bundle ID, version, and build number automatically and creates the App entry.
 
-- iOS: `.app.zip`
+- iOS: `.app.zip`, or a `.tar.gz`/`.tgz` simulator build
 - Android: `.apk`
 
 **Option B — Add App manually**: Click **+ Add App** in the sidebar and enter the app name, bundle ID, and platform. Use this to pre-register an app before any build is ready.
@@ -60,7 +61,7 @@ If an App with the same bundle ID already exists for the other platform, the two
 
 ## 5. Start a session
 
-From App Center, select a build and click a device card to start a session. The device streams to your browser in real time.
+From App Center, click a build row to open the QA Session page. Pick a Mac under **Select Mac**, then click a device under **Select device** to start a session. The device streams to your browser in real time.
 
 ## 6. Share access with your team
 
@@ -81,7 +82,7 @@ See [Self-Hosting the Relay](/guide/self-hosting) for the details of each deploy
 **What teammates do.** Once signed in, a teammate can test without installing anything:
 
 1. Pick a build in App Center.
-2. Click a device card to start a session.
+2. Choose a Mac and a device to start a session.
 3. Control the simulator or emulator in the browser and leave feedback as comments on the build.
 
 What each person can do depends on the role you assigned when inviting them (Admin / Developer / QA / Viewer). See [3. Invite your team](#_3-invite-your-team) above for the role descriptions.

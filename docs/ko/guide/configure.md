@@ -44,7 +44,7 @@ tapflow init
 각 터널의 설정 방법과 사전 준비물은 [릴레이 배포](/ko/guide/self-hosting#외부-접속)에서 다룹니다.
 
 ::: tip 비대화형 환경(CI)
-프롬프트 없이 터널을 지정하려면 플래그를 씁니다. `tapflow init --tunnel tailscale` 또는 `tapflow init --tunnel rathole`. 이미 설정이 있으면 `--force`로 덮어씁니다. `--force` 없이 `--tunnel`을 주면 플래그를 무시하지 않고 멈춥니다.
+프롬프트 없이 터널을 지정하려면 플래그를 씁니다. `tapflow init --tunnel tailscale` 또는 `tapflow init --tunnel rathole`. 이미 설정이 있으면 `--force`로 덮어씁니다. `--force` 없이 `--tunnel`을 주면 플래그를 무시하지 않고 멈춥니다. `--tunnel rathole`은 `tunnel.serverAddr`과 `tunnel.publicUrl`을 빈 값으로 씁니다. 두 값을 채우기 전에는 설정 검증에 실패해 모든 `tapflow` 명령이 종료되므로 바로 `tapflow.config.json`에서 채우세요.
 :::
 
 ## 2. 스트리밍 성능 (LAN 전용)
@@ -88,7 +88,7 @@ DNS 자동 발급을 고르면 업체를 선택하고 도메인을 입력합니�
 
 `<데이터 디렉토리>/.env`는 릴레이의 **모든 비밀이 모이는 기본 경로**입니다. 기본 설치라면 `~/.tapflow/data/.env`입니다. DNS 자동 발급을 선택하면 `init`이 토큰을 담을 빈 템플릿을 만들지만, 이 파일에는 DNS 토큰뿐 아니라 `JWT_SECRET`이나 SMTP 비밀번호 같은 다른 비밀도 한 줄씩 적을 수 있습니다. 비밀이라 `tapflow.config.json`에 두지 않고, gitignore되는 이 파일에 분리합니다.
 
-키 이름 뒤 `=` 다음에 값을 붙여넣습니다.
+`init`이 만든 파일에는 선택한 DNS 공급자의 토큰 줄만 들어 있습니다. 다른 비밀은 아래 예시처럼 줄을 추가하고 키 이름 뒤 `=` 다음에 값을 붙여넣습니다.
 
 ```ini
 # tapflow secrets — do not commit. Paste each value after the =.
@@ -154,7 +154,7 @@ your-app/                ← 앱 저장소: 리뷰하고 커밋하고 CI에서 �
 
 두 번째 규칙 덕분에 홈 디렉토리 방식이 생기기 전에 만든 설치가 있던 자리에서 그대로 돕니다. `tapflow start`와 `tapflow relay start`는 설치 디렉토리, 설정 파일, 데이터 디렉토리를 시작할 때 출력하므로 어느 설치를 쓰는지 항상 확인할 수 있습니다.
 
-서버나 두 번째 설치에는 `TAPFLOW_HOME`을 씁니다. `TAPFLOW_HOME=/var/lib/tapflow tapflow init`은 그 디렉토리를 만들고, 같은 변수를 가진 이후 명령이 모두 그 설치를 씁니다. 없는 디렉토리를 가리키면 릴레이를 실행하는 명령이 멈춥니다. 다른 자리에 빈 설치를 조용히 만들지 않습니다.
+서버나 두 번째 설치에는 `TAPFLOW_HOME`을 씁니다. `TAPFLOW_HOME=/var/lib/tapflow tapflow init`은 그 디렉토리를 만들고, 같은 변수를 가진 이후 명령이 모두 그 설치를 씁니다. 없는 디렉토리를 가리키면 릴레이를 실행하는 명령과 `agent start`, `status`, `logs`, `admin init`이 멈춥니다. 다른 자리에 빈 설치를 조용히 만들지 않습니다.
 
 새 설치의 데이터는 `<설치>/data`에 있습니다. 이미 `.tapflow/data`나 `.tapflow-data`가 있는 설치는 그대로 읽고, `init`이 찾은 경로를 `local.dataDir`에 적어 두므로 나중에 레이아웃이 바뀌지 않습니다.
 

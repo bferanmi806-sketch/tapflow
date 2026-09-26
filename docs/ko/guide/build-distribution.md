@@ -32,9 +32,9 @@ tapflow는 빌드 도구가 아니라 완성된 아티팩트를 다룹니다. �
 | 항목 | 설명 |
 |------|------|
 | tapflow relay | 실행 중이고 CI 환경에서 접근 가능해야 합니다 |
-| Personal Access Token | **Settings → Tokens**에서 `builds:write` 권한으로 생성합니다 |
+| Personal Access Token | **Settings → Tokens**에서 API 종류로 생성합니다(`builds:write` 권한 포함). 이 메뉴는 Admin에게만 보입니다 |
 
-## CI가 relay에 도달하려면
+## CI가 relay에 도달하려면 {#how-ci-reaches-the-relay}
 
 CI 잡이 relay의 `POST /api/v1/builds`에 접근할 수 있어야 합니다. relay는 에이전트와 같은 내부 네트워크에 두는 것이 원칙입니다([릴레이 배포](/ko/guide/self-hosting)). 그래서 CI가 어디서 실행되는지에 따라 경로가 갈립니다.
 
@@ -50,11 +50,11 @@ relay를 fly.io·Railway 같은 서비스에 직접 배포하면 에이전트→
 
 ## 1. 토큰 생성
 
-대시보드의 **Settings → Tokens → New Token**에서 생성합니다.
+대시보드의 **Settings → Tokens → New token**에서 생성합니다. Tokens 메뉴는 Admin에게만 보이므로 Admin 계정으로 진행하세요.
 
 - **Name**: `GitHub Actions`처럼 용도를 알 수 있는 이름
-- **Scope**: `builds:write`
-- **Expiry**: 선택 사항
+- **Expires in (days)**: 1~365일 (기본 30일)
+- **Type**: **API**. `view, builds:write` 권한이 자동으로 부여됩니다.
 
 토큰은 생성 시 한 번만 표시됩니다. CI 시크릿(예: `TAPFLOW_PAT`)으로 저장하세요.
 
@@ -106,6 +106,12 @@ $GIT_COMMIT_MSG"
 
 ## GitHub Actions 예시
 
+이 예시는 relay 내부 주소에 닿는 self-hosted macOS 러너를 가정합니다. relay를 [VPS + rathole 터널](#how-ci-reaches-the-relay)처럼 공개 URL로 열어 두었다면 `runs-on`을 `macos-latest` 같은 클라우드 러너로 바꿔도 됩니다.
+
+::: warning self-hosted 러너와 pull request
+self-hosted 러너는 워크플로가 체크아웃한 코드를 내부 네트워크의 Mac에서 그대로 실행합니다. 아래의 `if:`는 포크에서 연 pull request를 건너뛰므로 같은 저장소의 브랜치만 이 러너에서 빌드됩니다. 이 조건을 지우지 말고 외부 pull request를 받는 공개 저장소에는 self-hosted 러너를 연결하지 마세요.
+:::
+
 ```yaml
 name: tapflow에 업로드
 
@@ -116,7 +122,8 @@ on:
 
 jobs:
   upload:
-    runs-on: macos-latest
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macos]
 
     steps:
       - uses: actions/checkout@v4

@@ -32,9 +32,9 @@ tapflow works on the built artifact, not the build tool. A native Xcode or Gradl
 | Requirement | Notes |
 |-------------|-------|
 | tapflow relay | Running and reachable from your CI environment |
-| Personal Access Token | Create one in **Settings → Tokens** with `builds:write` scope |
+| Personal Access Token | Create an API-type token in **Settings → Tokens** (it carries `builds:write`). Only Admins see this page |
 
-## How CI reaches the relay
+## How CI reaches the relay {#how-ci-reaches-the-relay}
 
 Your CI job has to reach the relay's `POST /api/v1/builds`. The relay is meant to stay on the same internal network as the agents ([Self-Hosting the Relay](/guide/self-hosting)), so the path depends on where CI runs.
 
@@ -50,11 +50,11 @@ Deploying the relay to fly.io, Railway, or similar puts the agent→relay path o
 
 ## 1. Generate a token
 
-In the dashboard, go to **Settings → Tokens → New Token**.
+In the dashboard, go to **Settings → Tokens → New token**. Only Admins see the Tokens page, so use an Admin account.
 
 - **Name**: something descriptive, e.g. `GitHub Actions`
-- **Scope**: `builds:write`
-- **Expiry**: optional
+- **Expires in (days)**: 1–365 (default 30)
+- **Type**: **API**, which grants `view, builds:write`
 
 Copy the token — it is shown only once. Store it as a CI secret (e.g. `TAPFLOW_PAT`).
 
@@ -106,6 +106,12 @@ $GIT_COMMIT_MSG"
 
 ## GitHub Actions example
 
+This example assumes a self-hosted macOS runner that can reach the relay's internal address. If you have opened the relay on a public URL, as with [VPS + rathole](#how-ci-reaches-the-relay), you can switch `runs-on` to a cloud runner such as `macos-latest`.
+
+::: warning Self-hosted runners and pull requests
+A self-hosted runner executes whatever code the workflow checks out, on a Mac inside your network. The `if:` below skips pull requests opened from forks, so only branches in your own repository build there. Keep it, and don't attach self-hosted runners to a public repository that accepts outside pull requests.
+:::
+
 ```yaml
 name: Upload to tapflow
 
@@ -116,7 +122,8 @@ on:
 
 jobs:
   upload:
-    runs-on: macos-latest
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macos]
 
     steps:
       - uses: actions/checkout@v4

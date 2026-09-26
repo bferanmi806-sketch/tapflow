@@ -18,8 +18,9 @@ tapflow agent start --relay ws://192.168.x.x:4000 --token tflw_pat_xxxxxxxx
 
 | 옵션 | 기본값 | 설명 |
 |------|--------|------|
-| `--relay` | `ws://localhost:[port]` | 릴레이 WebSocket URL. 포트는 `tapflow.config.json`에서 읽습니다. |
-| `--device` | 전체 시뮬레이터 | 릴레이에 노출할 iOS 시뮬레이터를 이름 또는 UDID로 한정 |
+| `--relay` | `relay.url` 또는 `ws://localhost:[port]` | 릴레이 WebSocket URL. `ws://` 또는 `wss://`로 시작해야 합니다. 생략하면 `tapflow.config.json`의 `relay.url`(또는 `TAPFLOW_RELAY_URL`)을 쓰고 둘 다 없으면 설정 파일의 포트로 `ws://localhost`에 연결합니다. `relay.url`이 `http://`·`https://` 주소라면 에이전트가 시작을 거부하므로 `--relay`를 명시하세요. |
+| `--platform` | 자동 감지 | 실행할 플랫폼: `ios`, `android`, `all`. 생략하면 이 Mac에서 쓸 수 있는 플랫폼을 모두 실행합니다. |
+| `--device` | 전체 디바이스 | 릴레이에 노출할 디바이스를 이름 또는 ID가 일치하는 것으로 한정합니다. iOS 시뮬레이터와 Android AVD 모두 이름 또는 ID가 정확히 일치해야 합니다. |
 | `--token` | 없음 | 원격 릴레이 인증용 `agent` 스코프 토큰. `TAPFLOW_AGENT_TOKEN` 환경변수로도 전달할 수 있습니다. |
 
 ::: tip 유선 LAN 권장
@@ -74,13 +75,14 @@ tapflow devices
 ### 트러블슈팅
 
 ```
-Common
-  ✓ Node v22.x
+  ✓  Node v22.x
+  ✓  Port 4000
 
-iOS
-  ✓ Xcode 26.0
-  ✓ xcrun simctl
-  ✓ Simulator booted: iPhone 16 Pro
+  iOS
+  ✓  Xcode 26.0
+  ✓  xcrun simctl
+  ✓  Simulator available (8)
+  …
 ```
 
 ## Android
@@ -88,30 +90,33 @@ iOS
 ### 사전 요구사항
 
 - Android SDK 설치 (`ANDROID_HOME` 설정 또는 `adb`가 `$PATH`에 있어야 함)
-- `google_apis/arm64-v8a` 시스템 이미지 (android-34)를 사용하는 AVD
+- `google_apis/arm64-v8a` 시스템 이미지 (android-35)를 사용하는 AVD
 
 ### AVD 생성
 
-Android Studio의 AVD Manager에서 AVD를 생성합니다. 자세한 방법은 [가상 기기 만들기 및 관리하기](https://developer.android.com/studio/run/managing-avds?hl=ko)를 참고하세요.
+`tapflow setup android`가 android-35 `google_apis/arm64-v8a` 이미지로 폼팩터별 AVD 4개(`tapflow-compact`, `tapflow-phone`, `tapflow-large`, `tapflow-tablet`)를 만듭니다. 자세한 내용은 [환경 준비](/ko/guide/environment-setup)를 참고하세요. AVD를 직접 만들려면 Android Studio의 AVD Manager를 쓰세요. 방법은 [가상 기기 만들기 및 관리하기](https://developer.android.com/studio/run/managing-avds?hl=ko)를 참고하세요.
 
-AVD를 생성할 때 시스템 이미지 선택에 주의하세요:
+AVD를 직접 만들 때는 시스템 이미지 선택에 주의하세요:
 
 ::: warning AVD 이미지 선택이 중요합니다
 `google_apis/arm64-v8a` 이미지를 사용하세요. 이것이 테스트된 권장 구성입니다. `google_apis_playstore` 이미지는 테스트되지 않았으며 H.264 인코더 문제가 보고되었습니다.
 :::
 
-에이전트가 에뮬레이터를 자동으로 부팅하고, `sys.boot_completed`를 기다린 뒤 스트리밍을 시작합니다. Apple Silicon Mac의 에뮬레이터는 Mac 호스트에서 H.264 인코딩(VideoToolbox)을 수행하며, 30fps로 제한됩니다. 에뮬레이터 자체에 GPU 부하가 없습니다.
+에이전트가 에뮬레이터를 자동으로 부팅하고, `sys.boot_completed`를 기다린 뒤 스트리밍을 시작합니다. Apple Silicon Mac의 에뮬레이터는 Mac 호스트에서 H.264 인코딩(VideoToolbox)을 수행하며, 기본 30fps로 제한됩니다(`TAPFLOW_ANDROID_FPS`로 변경 가능). 에뮬레이터 자체에 GPU 부하가 없습니다.
 
 ### 트러블슈팅
 
 ```sh
 tapflow doctor
-# Common
-#   ✓ Node v22.x
+#   ✓  Node v22.x
+#   ✓  Port 4000
 #
-# Android
-#   ✓ adb found: /usr/local/bin/adb
-#   ✓ AVD: Pixel_8 (android-34 · google_apis/arm64-v8a)
+#   Android
+#   ✓  Android SDK: /Users/you/Library/Android/sdk
+#   ✓  adb found: /Users/you/Library/Android/sdk/platform-tools/adb
+#   ✓  aapt (build-tools): /Users/you/Library/Android/sdk/build-tools/35.0.0/aapt
+#   ✓  AVD available: tapflow-compact
+#   ✓  Lean mode (Android): off
 ```
 
 더 자세한 문제 해결 방법은 [문제 해결](/ko/guide/troubleshooting)을 참고하세요.

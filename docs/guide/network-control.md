@@ -36,6 +36,7 @@ A device that cannot be taken off the network draws the button in the failure co
 | Restart the device | Restart the device. Nothing was set up for it on this boot |
 | It could not be confirmed — try again | Press it again. This appears while a device is booting, or when the connection to it drops briefly |
 | The device did not change when asked | Press it again. If it keeps happening, that device will not take the setting — use another one |
+| tapflow cannot tell this app it is off the network | Pressing again gives the same answer. Try launching a different app, and check the `Network hook` lines of `tapflow doctor ios` on the agent Mac |
 | This Mac is not set up for it | See [iOS needs the network extension](#ios-needs-the-network-extension) above. It is an install step on the agent Mac |
 
 **Pressing again is only worth it where it says to try again.** The rest answer the same way however many times they are pressed.

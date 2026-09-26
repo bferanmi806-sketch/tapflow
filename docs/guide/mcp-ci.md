@@ -85,7 +85,7 @@ This path needs a few more prerequisites.
 | Requirement | Notes |
 |-------------|-------|
 | tapflow relay (always-on) | A Mac with the agent connected. Can be a dedicated Mac mini on your LAN. |
-| `TAPFLOW_TOKEN` | PAT with at least Developer role. Store as a CI secret. |
+| `TAPFLOW_TOKEN` | An **API**-type PAT (`view, builds:write`), created in **Settings → Tokens**, a page only Admins see. Store as a CI secret. |
 | `ANTHROPIC_API_KEY` | Required to run `claude` non-interactively. Store as a CI secret. |
 | Claude Code CLI | `npm install -g @anthropic-ai/claude-code` |
 

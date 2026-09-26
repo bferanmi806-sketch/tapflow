@@ -4,7 +4,7 @@ The relay is a lightweight Node.js server. It only routes WebSocket traffic and 
 
 ::: info The relay URL has two uses
 - **Dashboard** — open in a browser: `http://localhost:4000` (local) or `http://192.168.x.x:4000` (team on same LAN)
-- **Agent connection** — when the relay is on a separate Mac: `tapflow agent start --relay ws://192.168.x.x:4000`. The agent→relay path always uses LAN `ws://`, and remote agents authenticate with an `agent`-scope token ([Remote relay authentication](/guide/agent#remote-relay-authentication)).
+- **Agent connection** — when the relay is on a separate Mac: `tapflow agent start --relay ws://192.168.x.x:4000`. The agent→relay path stays on the LAN. The scheme is `ws://`, or `wss://` when the relay has `tls` configured and serves HTTPS. Remote agents authenticate with an `agent`-scope token ([Remote relay authentication](/guide/agent#remote-relay-authentication)).
 :::
 
 ## Deployment scenarios
@@ -132,7 +132,7 @@ Set it explicitly only when you need a fixed key — for example, to share one s
 openssl rand -hex 32
 ```
 
-Put it in `.tapflow/data/.env` so it survives restarts without re-exporting — the relay reads the file on start:
+Put it in the `.env` in the data directory (`~/.tapflow/data/.env` on a default install) so it survives restarts without re-exporting — the relay reads the file on start:
 
 ```ini
 JWT_SECRET=YOUR_JWT_SECRET
@@ -246,7 +246,7 @@ The relay does not ask connections that reach the relay port over loopback to si
 
 #### Enable HTTPS for the smoother stream (optional)
 
-The default Tailscale URL is plain HTTP, so teammates get the Standard profile. Terminating over Tailscale's free HTTPS moves them to the Smooth profile (see [Streaming Quality](/guide/streaming)). Tailscale issues and renews the `*.ts.net` certificate automatically, so no domain or DNS token is needed.
+The default Tailscale URL is plain HTTP, and tailnet addresses count as external, so teammates get a stream trimmed to 1000 px and decoded by the WASM decoder. Terminating over Tailscale's free HTTPS brings them in through the tunnel port, which moves them to the Smooth profile, with native resolution and hardware decoding (see [Streaming Quality](/guide/streaming)). Tailscale issues and renews the `*.ts.net` certificate automatically, so no domain or DNS token is needed.
 
 1. In the Tailscale admin console under **DNS**, enable **MagicDNS** and **HTTPS Certificates**. You'll acknowledge that machine names appear in the public Certificate Transparency log.
 2. On the relay Mac, terminate HTTPS in front of the relay's **tunnel port**. That is `4001`, unless you set `TAPFLOW_TUNNEL_PORT` or the relay itself runs on 4001, in which case it steps aside to 4002. The start banner prints the port it took, so use that number in the command below. Tailscale manages the certificate for you, so there's no separate issue step:
@@ -333,7 +333,7 @@ Add the `tunnel` section to `tapflow.config.json`:
 }
 ```
 
-Put the tunnel token in `.tapflow/data/.env`:
+Put the tunnel token in the `.env` in the data directory (`~/.tapflow/data/.env` on a default install):
 
 ```ini
 TAPFLOW_TUNNEL_TOKEN=your-secret-token
@@ -440,7 +440,7 @@ Handles automatic restart on crash, restart on server reboot, and log management
 npm install -g pm2 tapflow
 ```
 
-With `JWT_SECRET` in `.tapflow/data/.env` (or left unset to auto-generate), start:
+With `JWT_SECRET` in the data directory's `.env` (`~/.tapflow/data/.env` on a default install), or left unset to auto-generate, start:
 
 ```sh
 pm2 start tapflow --name relay -- relay start
@@ -482,7 +482,7 @@ TAPFLOW_DATA_DIR=/var/lib/tapflow/.tapflow/data
 JWT_SECRET=YOUR_JWT_SECRET
 ```
 
-`TAPFLOW_HOME` alone would put the data in `/var/lib/tapflow/data`. `TAPFLOW_DATA_DIR` is named here anyway, so this unit matches a server set up before the install directory existed and keeps its data where it already is. Drop the line on a fresh server if you prefer the shorter layout.
+`TAPFLOW_HOME` alone would put the data in `/var/lib/tapflow/data`. `TAPFLOW_DATA_DIR` is named here anyway, so this unit matches a server set up before the install directory existed and keeps its data where it already is. To use the shorter layout on a fresh server, drop the line and change `/var/lib/tapflow/.tapflow/data` in the `mkdir` above to `/var/lib/tapflow/data`. As long as a `.tapflow/data` folder exists, even an empty one, the relay treats it as existing data and keeps using it.
 
 Generate `JWT_SECRET` with `openssl rand -hex 32`, then keep `/etc/tapflow/relay.env` readable only by root:
 

@@ -10,29 +10,26 @@ The main workspace for the team. Shows all uploaded builds organised by app.
 
 | UI element | What it does |
 |---|---|
-| App card | Groups builds by app (bundle ID + platform). Click to expand build list. |
-| Build row | Shows version, build number, status badge, upload date, and uploader. |
-| Status badge | **Backlog** · **In Progress** · **Done** · **Rejected** — click to change (Developer or Admin). |
-| Upload Build | Opens the build upload dialog. Accepts `.app.zip` (iOS) or `.apk` (Android). |
-| Comments | Threaded comments per build. Attach screenshots. Visible to the whole team. |
-| Device card | Shows available simulators. **●** = booted, **○** = available. Click to start a session. |
+| App list | Groups builds by app (bundle ID + platform). Select an app to see its builds, grouped by version. |
+| Build row | Shows build number, platform, status badge, uploader, and upload date. Click it to open the QA Session page for that build. |
+| Status | **Backlog** · **In Progress** · **Done** · **Rejected** — change it from the status menu on the build row. Any signed-in member can change it. |
+| Upload build | Opens the build upload dialog. Accepts `.app.zip` or `.tar.gz`/`.tgz` (iOS simulator builds) and `.apk` (Android). |
 
 ## QA Session
 
 **Route**: `/app-center/build`
 
-The full-screen simulator view. Opened when you click a device card in App Center.
+The full-screen device view. Opened when you click a build row in App Center. Pick a Mac under **Select Mac**, then click a device under **Select device** to start a session. The device list shows each device as **Booted**, **Available**, or **In use** (another teammate has it). Use the breadcrumb at the top to go back a step.
 
 | Control | Description |
 |---|---|
 | Touch | Click or tap anywhere on the simulator to send a touch event. |
 | Swipe | Click and drag to swipe. |
-| Pinch | Two-finger pinch gesture on trackpad. |
-| Home / Back | Buttons in the control bar (platform-specific). |
+| Pinch | Hold Option (Alt) and drag. |
+| Device buttons | The toolbar buttons differ by platform. iOS has **Home** and a software keyboard button; Android has **Home**, **Back**, **Recent Apps**, and volume and power buttons. |
 | Deep link | Enter a deep link URL to open a specific screen in the app directly. |
-| Start / Stop recording | Start and stop recording from the session control bar. Recordings are listed per build and can be downloaded. |
-| FPS indicator | Shows current frames-per-second in the top-right corner. |
-| End session | Disconnects your browser from the device and returns the device to available state. |
+| Start / Stop recording | Start and stop recording from the toolbar. Recordings collect per build in the **Recordings** tab and can be downloaded. |
+| Comments | Leave threaded comments on the build in the **Comments** tab. You can attach images, and comments are visible to the whole team. |
 
 The screen streams at ~30 fps. Frame rate adapts to your network automatically.
 
@@ -62,7 +59,8 @@ Settings has three sub-pages accessible from the left nav.
 
 Personal profile settings for the currently signed-in user.
 
-- **Display name** — shown in comments and session history.
+- **Workspace** — the team name and logo. Visible to Admins only.
+- **Nickname** — shown in comments and session history.
 - **Avatar** — click the pencil icon on the avatar to upload a new image (PNG or JPEG, max 2 MB).
 - **Change password** — requires current password.
 
@@ -74,13 +72,13 @@ Visible to **Admin** only.
 - **Invite member** — send an email invite or generate a copy-paste link. Invites expire after 7 days.
 - **Change role** — reassign any member's role (Admin / Developer / QA / Viewer).
 - **Remove member** — permanently deletes the account. You cannot remove yourself.
-- **Reset password** — send a password reset email to a specific member.
+- **Reset pwd** — send a password reset email to a specific member. Requires SMTP.
 
 ### Tokens
 
-Personal Access Tokens (PATs) for CI/CD scripts and API access.
+Personal Access Tokens (PATs) for CI/CD scripts and API access. The sidebar shows this page to **Admin** only.
 
-- **Create token** — enter a name and optional expiry. The token is shown once — copy it immediately.
+- **New token** — enter a name, an expiry (1–365 days in this dialog, default 30), and a Type. **API** is for CI uploads and API access (scope `view, builds:write`); **Agent** connects remote Mac agents. The token is shown once — copy it immediately.
 - **Revoke** — instantly invalidates the token.
 
 Use PATs with the `Authorization: Bearer tflw_pat_<token>` header to upload builds from CI. See [Uploading Builds](/guide/upload-builds).

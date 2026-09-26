@@ -34,7 +34,7 @@ MCP 서버는 LLM 에이전트와 자체 호스팅 relay를 연결하는 로컬 
 
 - tapflow relay가 실행 중이어야 합니다.
 - 대시보드에서 **Personal Access Token(PAT)** 을 발급받아야 합니다.
-  Settings → Tokens → Create Token
+  **Settings → Tokens → New token**에서 Type을 **API**로 선택합니다. Tokens 메뉴는 Admin에게만 보입니다.
 
 ## 설치
 

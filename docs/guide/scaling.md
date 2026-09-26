@@ -32,22 +32,28 @@ tapflow status
 ```
 
 ```
-  ● mac-mini-office
+  ● agent  ◉ in use  ○ idle
+
+  ● mac-mini-office.local  (iOS)
       ○  iPhone 16 Pro
       ○  iPhone 15
 
-  ● mac-mini-lab
+  ● mac-mini-lab.local  (iOS)
       ○  iPhone 14
-      ○  Pixel 8
+
+  ● mac-mini-lab.local  (Android)
+      ○  tapflow-phone
+
+  3 agent(s) · 4 device(s) · 0 active session(s)
 ```
 
-The agent name is derived from the Mac's system hostname (`scutil --get ComputerName` on macOS). To change it, update the hostname in **System Settings → General → Sharing → Computer Name**.
+The agent name is Node's `os.hostname()`, which on macOS is usually the local hostname ending in `.local`. When one Mac runs both an iOS and an Android agent, the name appears twice, told apart by the `(iOS)` or `(Android)` after it. To change it, edit **Local hostname** under **System Settings → General → Sharing**.
 
 ## Simulators per Mac
 
 iOS Simulator and Android Emulator are memory-intensive. Each Mac can typically run 2–4 simultaneously depending on available RAM.
 
-Simulators are booted and managed through the dashboard. The agent reports only booted simulators to the relay, so the team sees exactly what's available.
+Simulators are booted and managed through the dashboard. The agent reports every available device to the relay, booted or not, and boots one on demand when a teammate starts a session.
 
 ## Monitoring
 

@@ -1,6 +1,6 @@
 # 빠른 시작
 
-tapflow는 5분 안에 실행할 수 있습니다.
+tapflow를 설치하고 대시보드를 여는 과정을 안내합니다. Xcode나 Android SDK를 새로 받아야 한다면 `tapflow setup` 단계에서 다운로드 시간이 추가로 걸립니다.
 
 ## 1. tapflow 설치
 
@@ -32,7 +32,7 @@ tapflow setup
 
 ## 3. tapflow 설정 (선택)
 
-`tapflow init`을 실행해 이 머신을 설정합니다. `~/.tapflow`에 `tapflow.config.json`을 쓰고, 터널을 묻고, 터널 없이 LAN으로 쓸 때는 스트리밍 성능(HTTP 또는 HTTPS)까지 대화형으로 물어봅니다. 기본값(포트 4000, 터널 없음, HTTP)으로 충분하다면 이 단계를 건너뛸 수 있습니다.
+`tapflow init`을 실행해 이 머신을 설정합니다. `~/.tapflow`에 `tapflow.config.json`을 쓰고, 터널을 묻고, 터널 없이 LAN으로 쓸 때는 스트리밍 성능(HTTP 또는 HTTPS)까지 대화형으로 물어봅니다. 시뮬레이터나 에뮬레이터를 돌릴 수 있는 머신이면 Lean 모드를 켤지도 묻습니다. 기본값(포트 4000, 터널 없음, HTTP)으로 충분하다면 이 단계를 건너뛸 수 있습니다.
 
 ```sh
 tapflow init
@@ -48,9 +48,24 @@ Mac에서 실행하세요:
 
 ```sh
 tapflow start
-# ✓ Relay started on ws://localhost:4000
-# ✓ iOS Agent connected (3 simulators available)
 ```
+
+설치 폴더·설정·데이터 경로가 먼저 출력되고 릴레이와 에이전트가 준비되면 아래와 같은 배너가 나옵니다. Android 환경이 있으면 `android` 에이전트도 함께 연결됩니다. 첫 번째 에이전트가 연결에 실패하면 `start`는 오류 배너를 띄우고 멈춥니다. 다른 에이전트가 연결된 뒤에 실패한 에이전트는 ⚠ 줄로 알리고 나머지는 계속 실행됩니다.
+
+```text
+  →  Relay started on http://localhost:4000
+
+  ✓  Connecting ios agent…
+
+  ┌─────────────────────────────────────────────┐
+  │  ✓  TAPFLOW READY                           │
+  └─────────────────────────────────────────────┘
+     Relay  : http://localhost:4000
+     Open http://localhost:4000 in your browser.
+     Press Ctrl+C to stop.
+```
+
+이 터미널은 닫지 말고 그대로 두세요. `Ctrl+C`를 누르면 릴레이와 에이전트가 함께 종료됩니다.
 
 ::: tip 릴레이를 서버에 따로 띄우려면
 `tapflow relay start`와 `tapflow agent start`를 사용하세요. 자세한 내용은 [릴레이 배포](/ko/guide/self-hosting)를 참고하세요.

@@ -16,7 +16,7 @@ TAPFLOW_AUDIO=off tapflow agent start
 
 ## 요구 사항
 
-- **iOS**: 에이전트 Mac이 macOS 14.2 이상이어야 합니다(Core Audio 프로세스 탭). 그 미만에서는 iOS 오디오를 쓸 수 없습니다. 영상에는 영향이 없습니다.
+- **iOS**: 에이전트 Mac이 macOS 14.2 이상이어야 합니다(Core Audio 프로세스 탭). iOS 에이전트는 macOS 26 이상에서 동작하므로([시스템 요구사항](/ko/guide/requirements)) 지원 환경에서는 이 조건이 항상 충족됩니다.
 - **Android**: 에뮬레이터 스트림으로 캡처하므로 추가 요구 사항이 없습니다.
 
 ## 권한 (최초 1회)

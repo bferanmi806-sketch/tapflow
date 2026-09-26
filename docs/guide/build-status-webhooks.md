@@ -21,9 +21,9 @@ For automated testing where an LLM agent controls the simulator, see [MCP in CI/
 
 ## Register an endpoint
 
-There are two ways to register. Declare endpoints in `config.json` if you manage settings as files, or use the REST API to add and remove them at runtime. Endpoints from both sources are delivered together.
+There are two ways to register. Declare endpoints in `tapflow.config.json` if you manage settings as files, or use the REST API to add and remove them at runtime. Endpoints from both sources are delivered together.
 
-### Declare in config.json (recommended)
+### Declare in tapflow.config.json (recommended) {#declare-in-config-json-recommended}
 
 Add entries to the `webhooks` array in `tapflow.config.json`. This keeps webhooks in the same file a self-hosted operator already uses for TLS, SMTP, and the rest.
 
@@ -35,7 +35,7 @@ Add entries to the `webhooks` array in `tapflow.config.json`. This keeps webhook
 }
 ```
 
-Secrets never go in config.json. Point `secretEnv` at an environment variable name and tapflow reads that value as the signing key. Keep the actual secret in `.env`.
+Secrets never go in `tapflow.config.json`. Point `secretEnv` at an environment variable name and tapflow reads that value as the signing key. Keep the actual secret in `.env`.
 
 ```
 TAPFLOW_WEBHOOK_SECRET_CI=a-long-random-string
@@ -47,7 +47,7 @@ TAPFLOW_WEBHOOK_SECRET_CI=a-long-random-string
 | `secretEnv` | Name of the env var holding the signing secret (optional, strongly recommended) |
 | `enabled` | Whether the endpoint is active (defaults to `true`) |
 
-Changes to config.json take effect after a relay restart.
+Changes to `tapflow.config.json` take effect after a relay restart.
 
 ### Register via the REST API
 
@@ -66,7 +66,7 @@ curl -X POST https://your-relay/api/v1/webhooks \
 | `secret` | Key used to sign deliveries (optional, strongly recommended) |
 | `enabled` | Whether the endpoint is active (defaults to `true`) |
 
-Unlike config.json, the REST API takes the secret directly in the request body. Register several and every enabled endpoint receives its own POST — connect Slack and an internal CI hook at the same time.
+Unlike `tapflow.config.json`, the REST API takes the secret directly in the request body. Register several and every enabled endpoint receives its own POST — connect Slack and an internal CI hook at the same time.
 
 The REST management endpoints:
 

@@ -120,8 +120,9 @@ tapflow flow run .tapflow/flows/login.yaml .tapflow/flows/checkout.yaml
 | `--relay <url>` | Relay URL (default `ws://localhost:4000`) |
 | `--token <token>` | PAT for a remote relay (or the `TAPFLOW_TOKEN` env var) |
 | `--device <name>` | Target device by name. Boots it when shut down. |
-| `--session <id>` | Target session id (from `tapflow status`) |
+| `--session <id>` | Session id of the target device. Use it when several devices share a name and `--device` cannot pick one. |
 | `--build <id>` | Build under test. Installed before the run; the `launchApp` step launches it. |
+| `--no-install` | Skip installing the `--build` build before the run. Use it to re-run against a build that is already installed. |
 | `--junit <path>` | Write a JUnit XML report to this path. |
 | `--artifacts <dir>` | Failure-screenshot directory (default `.tapflow/artifacts`) |
 | `--timeout <seconds>` | Default per-selector wait (default 10, max 2147483.647) |

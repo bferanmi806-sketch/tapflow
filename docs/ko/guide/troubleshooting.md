@@ -13,8 +13,8 @@
 ### 에이전트가 릴레이에 연결되지 않음
 
 1. 릴레이가 실행 중인지 확인합니다.
-2. `--relay` 옵션의 URL이 `ws://`인지 확인합니다. 에이전트는 항상 내부 네트워크로 연결합니다.
-3. `tapflow doctor`를 실행해 환경을 점검합니다.
+2. `--relay` 옵션의 URL 스킴을 확인합니다. 릴레이가 평문 HTTP면 `ws://`, 릴레이에 `tls`가 설정되어 HTTPS로 동작하면 `wss://`여야 합니다. `tapflow relay start`가 출력하는 에이전트 연결 명령(이 Mac에서 에이전트를 띄우지 않을 때는 `tapflow start`도 출력)과 Agent 토큰 다이얼로그의 명령에는 맞는 스킴이 들어 있습니다.
+3. `tapflow doctor`를 실행해 환경을 점검합니다. 같은 Mac에서 릴레이가 실행 중이면 릴레이가 포트를 쓰고 있어서 `Port 4000` 항목이 실패로 나옵니다. 이 항목은 무시해도 됩니다.
 
 ## 빌드를 열면 `spawn unknown error`가 납니다 {#spawn-unknown-error}
 
@@ -107,8 +107,8 @@ Xcode → Settings → Platforms에서 iOS 18+ 런타임을 설치합니다.
 대개 AVD가 테스트되지 않은 `google_apis_playstore` 이미지를 사용할 때 발생합니다. 테스트된 `google_apis/arm64-v8a` 이미지로 AVD를 다시 생성하세요.
 
 ```sh
-sdkmanager "system-images;android-34;google_apis;arm64-v8a"
-avdmanager create avd -n Pixel_8 -k "system-images;android-34;google_apis;arm64-v8a"
+sdkmanager "system-images;android-35;google_apis;arm64-v8a"
+avdmanager create avd -n Pixel_8 -k "system-images;android-35;google_apis;arm64-v8a"
 ```
 
 ### `INSTALL_FAILED_NO_MATCHING_ABIS` — Apple Silicon 에뮬레이터와 호환되지 않는 APK
@@ -185,7 +185,7 @@ tapflow(G=119)가 원본(G=128)에 더 가깝고, 에뮬레이터(G=108)는 원�
 
 ### 무인 상태에서 에뮬레이터가 느려짐
 
-tapflow는 에이전트가 실행되는 동안 호스트 Mac의 idle sleep을 자동으로 차단합니다(`caffeinate -i`). 에이전트가 연결되면 어서션을 획득하고, 종료될 때 해제합니다.
+tapflow는 에이전트가 실행되는 동안 호스트 Mac의 idle sleep을 자동으로 차단합니다(`caffeinate -di`, `TAPFLOW_ALLOW_DISPLAY_SLEEP`을 설정하면 `caffeinate -i`). 에이전트가 연결되면 어서션을 획득하고, 종료될 때 해제합니다.
 
 그래도 무인 상태에서 에뮬레이터가 느리다면 아래 두 가지를 확인하세요.
 
@@ -276,6 +276,7 @@ tapflow doctor ios
 | 5 | 맥을 재시작해야 완료됩니다 |
 | 6 | 시스템 확장 관리자가 45초 안에 응답하지 않음 |
 | 7 | 실행 중인 필터에게서 답을 받지 못함 |
+| 8 | 이 빌드가 이해하지 못하는 인자. 설치된 필터 앱이 에이전트보다 오래된 버전일 때 나올 수 있습니다 |
 
 확장이 무엇을 보고 무엇을 보지 않는지는 [네트워크 제어](/ko/guide/network-control#무엇을-신뢰하게-되는가)에 있습니다.
 
@@ -355,7 +356,7 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
 ### 실행 중인 시뮬레이터가 없는 경우
 
-부팅된 시뮬레이터가 없으면 `tapflow doctor`에서 경고를 표시합니다. 이 경고는 `tapflow start` 실행을 막지 않으며 참고용입니다.
+`tapflow doctor`는 시뮬레이터 부팅 여부로 통과와 실패를 가르지 않습니다. 사용 가능한 시뮬레이터가 하나라도 있으면 통과하고 하나도 없을 때만 경고를 표시합니다. 시뮬레이터는 세션을 시작할 때 에이전트가 필요에 따라 부팅합니다.
 
 시작 전에 시뮬레이터를 미리 부팅하려면:
 
@@ -379,7 +380,7 @@ export PATH=$PATH:$ANDROID_HOME/platform-tools
 
 ### 세션이 자동으로 종료됨
 
-30분 동안 브라우저 입력이 없으면 세션이 자동 종료됩니다. 현재 이 값은 설정에서 변경할 수 없습니다. 대시보드에서 재연결하면 됩니다.
+브라우저 연결이 끊기고 5분이 지나면 릴레이가 에이전트에 기기 종료를 요청합니다. 브라우저가 연결돼 있는 동안에는 입력이 없어도 종료되지 않습니다. 이 시간은 릴레이의 `IDLE_TIMEOUT_MS` 환경변수(밀리초 단위)로 바꿀 수 있습니다. 대시보드에서 재연결하면 됩니다.
 
 ## 스트림 지연·끊김 {#stream-lag}
 
@@ -442,11 +443,11 @@ AWDL은 트리거(AirDrop 검색·AirPlay 수신·Handoff·Bluetooth 근접)가 
 
 ### 초대 링크가 만료됨
 
-초대 링크는 **7일** 후 만료됩니다. Admin이 **Settings → Team**에서 새 초대를 발송해야 합니다. SMTP가 설정되지 않은 경우 API 응답의 `token` 값을 직접 복사해 링크를 공유할 수 있습니다.
+초대 링크는 **7일** 후 만료됩니다. Admin이 **Settings → Team**에서 새 초대를 만들어야 합니다. SMTP가 설정되지 않은 경우 초대 다이얼로그에 표시된 링크를 복사해 공유할 수 있습니다.
 
 ### 비밀번호 재설정 링크가 만료됨
 
-비밀번호 재설정 링크는 **2시간** 후 만료됩니다. Admin이 **Settings → Team → 회원 선택 → 비밀번호 재설정 발송**으로 새 링크를 요청할 수 있습니다.
+비밀번호 재설정 링크는 **2시간** 후 만료됩니다. Admin이 **Settings → Team**에서 해당 멤버 행의 **Reset pwd**를 눌러 새 링크를 보낼 수 있습니다. 재설정 링크는 이메일로만 전달되므로 SMTP가 설정되어 있어야 합니다.
 
 ## 로그 확인
 
